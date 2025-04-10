@@ -7,7 +7,7 @@ Aplicação com interface gráfica voltada para advogados(as) e profissionais do
 - 🗓 Preenchimento da data de prazo em planilha Excel
 - 📅 Cálculo de prazos processuais conforme a data da publicação
 - 📚 Consideração de prazos diferentes para o ramo trabalhista (CLT) e cível (CPC)
-- 👨‍⚖️ Interface visual com design jurídico e assinatura profissional
+- 👨‍⚖️ Interface visual com design jurídico
 
 ## 📂 Como usar
 
