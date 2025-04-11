@@ -24,22 +24,26 @@ IMAGEM_JURIDICA = recurso_path("justica.png")
 
 # Prazos por tipo e ramo
 PRAZOS = {
-    "CLT": {
+    "Direito Trabalhista - CLT": {
         "Embargos de declaração": 5,
         "Recurso Ordinário Trabalhista": 8,
         "Recurso de Revista": 8,
         "Agravo de Petição": 8,
         "Agravo de Instrumento em RR ou RO": 8,
         "Contrarrazões ao RR ou RO": 8,
-        "Contraminuta ao RR / Contrarrazões ao AI": 8,
+        "Contraminuta AI / Contrarrazões RR": 8,
+        "Embargos à Execução": 5,
+        "Impugnação à Sentença de Liquidação": 5,
+        "Agravo TST": 8,
+        "Embargos TST": 8
     },
-    "CPC": {
+    "Direito Civil - CPC": {
         "Embargos de declaração": 5,
         "Recurso Ordinário (Cível)": 15,
         "Apelação": 15,
         "Agravo de Instrumento": 15,
         "Recurso Especial": 15,
-        "Recurso Extraordinário": 15,
+        "Recurso Extraordinário": 15
     }
 }
 
@@ -96,7 +100,7 @@ def preencher_pz(data, janela):
 # Interface
 janela = tk.Tk()
 janela.title("Gerador de Prazos Jurídicos Digitais")
-janela.geometry("600x650")
+janela.geometry("700x700")
 janela.configure(bg="#0f172a")
 
 frame = tk.Frame(janela, bg="#0f172a")
@@ -124,19 +128,18 @@ tk.Label(
 ).pack(pady=(5, 10))
 
 # Instrução data para preenchimento
-entrada_label = tk.Label(
+tk.Label(
     frame,
     text="Insira a data do prazo (formato: DD/MM):",
     font=("Segoe UI", 12),
     bg="#0f172a",
     fg="#94a3b8"
-)
-entrada_label.pack()
+).pack()
 
-data_label = tk.Entry(
+entrada = tk.Entry(
     frame,
     font=("Consolas", 14),
-    width=20,
+    width=30,
     justify="center",
     bd=2,
     relief="flat",
@@ -144,8 +147,7 @@ data_label = tk.Entry(
     fg="#f8fafc",
     insertbackground="#f8fafc"
 )
-data_label.pack(pady=8)
-entrada = data_label
+entrada.pack(pady=8)
 
 # Botão gerar planilha
 tk.Button(
@@ -170,7 +172,7 @@ tk.Label(
 publicacao_entry = tk.Entry(
     frame,
     font=("Consolas", 14),
-    width=20,
+    width=30,
     justify="center",
     bd=2,
     relief="flat",
@@ -185,18 +187,18 @@ ramo_var = tk.StringVar()
 tipo_var = tk.StringVar()
 
 tk.Label(frame, text="Selecione o ramo:", font=("Segoe UI", 11), bg="#0f172a", fg="white").pack(pady=(10, 0))
-ramo_menu = ttk.Combobox(frame, textvariable=ramo_var, values=list(PRAZOS.keys()), state="readonly")
+ramo_menu = ttk.Combobox(frame, textvariable=ramo_var, values=list(PRAZOS.keys()), state="readonly", width=40)
 ramo_menu.pack(pady=2)
 
 def atualizar_tipos(event):
     ramo = ramo_var.get()
-    tipo_menu["values"] = list(PRAZOS.get(ramo, {}).keys())
+    tipo_menu["values"] = sorted(PRAZOS.get(ramo, {}).keys())
     tipo_var.set("")
 
 ramo_menu.bind("<<ComboboxSelected>>", atualizar_tipos)
 
 tk.Label(frame, text="Selecione o tipo de recurso:", font=("Segoe UI", 11), bg="#0f172a", fg="white").pack(pady=(10, 0))
-tipo_menu = ttk.Combobox(frame, textvariable=tipo_var, state="readonly")
+tipo_menu = ttk.Combobox(frame, textvariable=tipo_var, state="readonly", width=40)
 tipo_menu.pack(pady=2)
 
 # Botão calcular prazo
@@ -221,3 +223,4 @@ tk.Label(
 
 print("Interface carregada.")
 janela.mainloop()
+
