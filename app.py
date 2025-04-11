@@ -176,7 +176,7 @@ def abrir_janela_preenchimento_multiplo():
             messagebox.showerror("Erro ao preencher planilha", str(e))
 
     tk.Button(nova_janela, text="Adicionar", bg="#2563eb", fg="white", command=adicionar).pack(pady=5)
-    tk.Button(nova_janela, text="Preencher Cliente/Processo no Excel", bg="#22c55e", fg="white", command=gerar_excel).pack(pady=10)
+    tk.Button(nova_janela, text="Preencher Dados Cliente/Processo", bg="#22c55e", fg="white", command=gerar_excel).pack(pady=10)
     tk.Label(nova_janela, text="Aplicação desenvolvida por: Rodrigo Junqueira de Lima Siqueira", font=("Segoe UI", 8), bg="#0f172a", fg="#64748b").pack(side="bottom", pady=(10, 5))
 
 # Interface principal
