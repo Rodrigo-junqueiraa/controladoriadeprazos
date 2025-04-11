@@ -48,7 +48,6 @@ PRAZOS = {
 feriados_selecionados = []
 registros = []
 
-
 def calcular_prazo_util(data_str, dias):
     try:
         data_inicial = datetime.strptime(data_str, "%d/%m")
@@ -62,7 +61,6 @@ def calcular_prazo_util(data_str, dias):
     except Exception as e:
         return f"Erro: {e}"
 
-
 def exibir_calculo():
     data = publicacao_entry.get()
     ramo = ramo_var.get()
@@ -74,14 +72,12 @@ def exibir_calculo():
     else:
         messagebox.showerror("Erro", "Selecione um tipo e ramo válido.")
 
-
 def alternar_feriado():
     if checkbox_var.get():
         feriado_frame.pack(pady=5)
     else:
         feriado_frame.pack_forget()
         feriados_selecionados.clear()
-
 
 def adicionar_feriado():
     inicio = feriado_inicio.get()
@@ -101,11 +97,10 @@ def adicionar_feriado():
     except ValueError:
         messagebox.showerror("Erro", "Formato de data inválido. Use DD/MM.")
 
-
 def abrir_janela_preenchimento_multiplo():
     nova_janela = tk.Toplevel(janela)
     nova_janela.title("Múltiplos Preenchimentos")
-    nova_janela.geometry("500x550")
+    nova_janela.geometry("500x600")
     nova_janela.configure(bg="#0f172a")
 
     tk.Label(nova_janela, text="Data do Prazo (DD/MM):", bg="#0f172a", fg="white").pack()
@@ -124,8 +119,16 @@ def abrir_janela_preenchimento_multiplo():
     entry_tipo = tk.Entry(nova_janela)
     entry_tipo.pack()
 
-    tree = ttk.Treeview(nova_janela, columns=("Nome", "Processo", "Tipo", "Data"), show="headings")
-    for col in ("Nome", "Processo", "Tipo", "Data"):
+    tk.Label(nova_janela, text="Responsável:", bg="#0f172a", fg="white").pack()
+    entry_resp = tk.Entry(nova_janela)
+    entry_resp.pack()
+
+    tk.Label(nova_janela, text="Publicação:", bg="#0f172a", fg="white").pack()
+    entry_pub = tk.Entry(nova_janela)
+    entry_pub.pack()
+
+    tree = ttk.Treeview(nova_janela, columns=("Nome", "Processo", "Tipo", "Data", "Resp", "Pub"), show="headings")
+    for col in ("Nome", "Processo", "Tipo", "Data", "Resp", "Pub"):
         tree.heading(col, text=col)
     tree.pack(pady=5, fill="both", expand=True)
 
@@ -134,12 +137,16 @@ def abrir_janela_preenchimento_multiplo():
         processo = entry_processo.get()
         tipo = entry_tipo.get()
         data = entry_data_prazo.get()
-        if nome and processo and tipo and data:
-            registros.append((nome, processo, tipo, data))
-            tree.insert("", "end", values=(nome, processo, tipo, data))
+        resp = entry_resp.get()
+        pub = entry_pub.get()
+        if nome and processo and tipo and data and resp and pub:
+            registros.append((nome, processo, tipo, data, resp, pub))
+            tree.insert("", "end", values=(nome, processo, tipo, data, resp, pub))
             entry_nome.delete(0, tk.END)
             entry_processo.delete(0, tk.END)
             entry_tipo.delete(0, tk.END)
+            entry_resp.delete(0, tk.END)
+            entry_pub.delete(0, tk.END)
 
     def gerar_excel():
         if not registros:
@@ -153,10 +160,12 @@ def abrir_janela_preenchimento_multiplo():
                 if bloco_index >= len(registros):
                     break
                 if row[0].value and str(row[0].value).strip().upper() == "NOME" and row[1].value in (None, ""):
-                    nome, processo, tipo, data = registros[bloco_index]
+                    nome, processo, tipo, data, resp, pub = registros[bloco_index]
                     ws.cell(row=i+1, column=2).value = nome
                     ws.cell(row=i+2, column=2).value = processo
                     ws.cell(row=i+3, column=2).value = tipo
+                    ws.cell(row=i+1, column=4).value = resp
+                    ws.cell(row=i+2, column=4).value = pub
                     ws.cell(row=i+3, column=4).value = data
                     bloco_index += 1
             salvar_em = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
@@ -170,16 +179,16 @@ def abrir_janela_preenchimento_multiplo():
     tk.Button(nova_janela, text="Preencher Cliente/Processo no Excel", bg="#22c55e", fg="white", command=gerar_excel).pack(pady=10)
     tk.Label(nova_janela, text="Aplicação desenvolvida por: Rodrigo Junqueira de Lima Siqueira", font=("Segoe UI", 8), bg="#0f172a", fg="#64748b").pack(side="bottom", pady=(10, 5))
 
+# Interface principal
 janela = tk.Tk()
 janela.title("Sistema de Controle de Prazos")
-janela.geometry("700x730")
+janela.geometry("700x700")
 janela.configure(bg="#0f172a")
 
 frame = tk.Frame(janela, bg="#0f172a")
 frame.pack(expand=True)
 
-# Título e botão principal
-
+# Imagem
 if os.path.exists(IMAGEM_JURIDICA):
     try:
         imagem = Image.open(IMAGEM_JURIDICA)
@@ -187,54 +196,43 @@ if os.path.exists(IMAGEM_JURIDICA):
         imagem_tk = ImageTk.PhotoImage(imagem)
         img_label = tk.Label(frame, image=imagem_tk, bg="#0f172a")
         img_label.image = imagem_tk
-        img_label.pack(pady=(15, 5))
+        img_label.pack(pady=(10, 5))
     except Exception as e:
         print("Erro ao carregar imagem:", e)
 
+# Título principal
 tk.Label(
     frame,
     text="Sistema de Controle de Prazos",
     font=("Segoe UI", 16, "bold"),
     bg="#0f172a",
     fg="white"
-).pack(pady=(20, 10))
+).pack(pady=(5, 5))
 
-tk.Label(
+# Botão de preenchimento
+btn_preencher = tk.Button(
     frame,
-    text="Clique abaixo para preencher os dados do prazo.\nSerá gerado um arquivo em Excel com múltiplos prazos.",
-    font=("Segoe UI", 10),
-    bg="#0f172a",
-    fg="#cbd5e1",
-    justify="center"
-).pack()
-
-tk.Button(
-    frame,
-    text="Preencher Cliente/Processo no Excel",
+    text="Preencher Cliente / Processo",
     font=("Segoe UI", 12, "bold"),
     bg="#22c55e",
     fg="white",
-    activebackground="#15803d",
+    activebackground="#16a34a",
     command=abrir_janela_preenchimento_multiplo
-).pack(pady=15)
+)
+btn_preencher.pack(pady=10)
 
-# Cálculo de prazos
-
+# Separador de seção
 tk.Label(
     frame,
-    text="Cálculo de Prazos",
-    font=("Segoe UI", 16, "bold"),
+    text="Calculadora de Prazos",
+    font=("Segoe UI", 14, "bold"),
     bg="#0f172a",
     fg="white"
-).pack(pady=(30, 10))
+).pack(pady=(20, 5))
 
-tk.Label(
-    frame,
-    text="Data da publicação (formato: DD/MM):",
-    font=("Segoe UI", 12),
-    bg="#0f172a",
-    fg="#94a3b8"
-).pack()
+# Campo de data da publicação
+ramo_var = tk.StringVar()
+tipo_var = tk.StringVar()
 
 publicacao_entry = tk.Entry(
     frame,
@@ -249,10 +247,8 @@ publicacao_entry = tk.Entry(
 )
 publicacao_entry.pack(pady=8)
 
-tk.Label(frame, text="Selecione o ramo:", font=("Segoe UI", 11), bg="#0f172a", fg="white").pack()
-ramo_var = tk.StringVar()
 ramo_menu = ttk.Combobox(frame, textvariable=ramo_var, values=list(PRAZOS.keys()), state="readonly", width=40)
-ramo_menu.pack()
+ramo_menu.pack(pady=2)
 
 def atualizar_tipos(event):
     ramo = ramo_var.get()
@@ -261,12 +257,13 @@ def atualizar_tipos(event):
 
 ramo_menu.bind("<<ComboboxSelected>>", atualizar_tipos)
 
-tk.Label(frame, text="Selecione o tipo de recurso:", font=("Segoe UI", 11), bg="#0f172a", fg="white").pack(pady=(10, 0))
-tipo_var = tk.StringVar()
+
+
 tipo_menu = ttk.Combobox(frame, textvariable=tipo_var, state="readonly", width=40)
 tipo_menu.pack(pady=2)
 
-tk.Button(
+# Botão para calcular prazo
+calcular_btn = tk.Button(
     frame,
     text="Calcular Prazo Jurídico",
     font=("Segoe UI", 11, "bold"),
@@ -274,7 +271,8 @@ tk.Button(
     fg="white",
     activebackground="#1d4ed8",
     command=exibir_calculo
-).pack(pady=10)
+)
+calcular_btn.pack(pady=10)
 
 checkbox_var = tk.BooleanVar()
 tk.Checkbutton(
@@ -291,34 +289,21 @@ tk.Checkbutton(
 
 feriado_frame = tk.Frame(frame, bg="#0f172a")
 
-tk.Label(
-    feriado_frame,
-    text="De (DD/MM):",
-    font=("Segoe UI", 10),
-    bg="#0f172a",
-    fg="#94a3b8"
-).grid(row=0, column=0, padx=5)
 feriado_inicio = tk.Entry(feriado_frame, font=("Consolas", 12), width=10, justify="center", bg="#1e293b", fg="#f8fafc")
 feriado_inicio.grid(row=0, column=1, padx=5)
 
-tk.Label(
-    feriado_frame,
-    text="Até (DD/MM):",
-    font=("Segoe UI", 10),
-    bg="#0f172a",
-    fg="#94a3b8"
-).grid(row=0, column=2, padx=5)
 feriado_fim = tk.Entry(feriado_frame, font=("Consolas", 12), width=10, justify="center", bg="#1e293b", fg="#f8fafc")
 feriado_fim.grid(row=0, column=3, padx=5)
 
-tk.Button(
+adicionar_feriado_btn = tk.Button(
     feriado_frame,
     text="Adicionar Feriado",
     font=("Segoe UI", 10, "bold"),
     bg="#334155",
     fg="white",
     command=adicionar_feriado
-).grid(row=0, column=4, padx=5)
+)
+adicionar_feriado_btn.grid(row=0, column=4, padx=5)
 
 tk.Label(
     frame,
@@ -329,3 +314,4 @@ tk.Label(
 ).pack(side="bottom", pady=(10, 5))
 
 janela.mainloop()
+
