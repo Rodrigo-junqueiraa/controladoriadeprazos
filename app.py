@@ -12,7 +12,6 @@ print("Iniciando app...")
 
 ARQUIVO_MODELO = "Planilha de prazos - atualizada.xlsx"
 
-# Função para garantir caminho correto da imagem no .exe
 def recurso_path(rel_path):
     try:
         base_path = sys._MEIPASS
@@ -22,7 +21,6 @@ def recurso_path(rel_path):
 
 IMAGEM_JURIDICA = recurso_path("justica.png")
 
-# Prazos por tipo e ramo
 PRAZOS = {
     "Direito Trabalhista - CLT": {
         "Agravo TST": 8,
@@ -54,12 +52,9 @@ def calcular_prazo_util(data_str, dias):
         data_inicial = datetime.strptime(data_str, "%d/%m")
         data_inicial = data_inicial.replace(year=datetime.now().year)
         df = pd.date_range(data_inicial + timedelta(days=1), periods=90, freq='B')
-
         df_filtrado = [d for d in df if d.strftime("%d/%m") not in feriados_selecionados]
-
         if len(df_filtrado) < dias:
             return "Prazo ultrapassa os dias úteis disponíveis"
-
         termo_final = df_filtrado[dias - 1]
         return termo_final.strftime("%d/%m")
     except Exception as e:
@@ -75,6 +70,30 @@ def exibir_calculo():
         messagebox.showinfo("Resultado do Cálculo", f"{tipo}\nPrazo final: {resultado}")
     else:
         messagebox.showerror("Erro", "Selecione um tipo e ramo válido.")
+
+def preencher_pz(data, janela):
+    if not os.path.exists(ARQUIVO_MODELO):
+        messagebox.showerror("Erro", f"Arquivo '{ARQUIVO_MODELO}' não encontrado.", parent=janela)
+        return
+    try:
+        wb = load_workbook(ARQUIVO_MODELO)
+        ws = wb.active
+        for row in ws.iter_rows(min_row=1):
+            if row[0].value == "TIPO":
+                row[3].value = data
+        nome_arquivo = f"Planilha_prazos_{data.replace('/', '-')}.xlsx"
+        salvar_em = filedialog.asksaveasfilename(
+            parent=janela,
+            defaultextension=".xlsx",
+            filetypes=[("Excel", "*.xlsx")],
+            initialfile=nome_arquivo,
+            title="Salvar como"
+        )
+        if salvar_em:
+            wb.save(salvar_em)
+            messagebox.showinfo("Sucesso", f"Arquivo salvo em:\n{salvar_em}", parent=janela)
+    except Exception as e:
+        messagebox.showerror("Erro ao processar", str(e), parent=janela)
 
 def alternar_feriado():
     if checkbox_var.get():
@@ -101,7 +120,6 @@ def adicionar_feriado():
     except ValueError:
         messagebox.showerror("Erro", "Formato de data inválido. Use DD/MM.")
 
-# Interface principal
 janela = tk.Tk()
 janela.title("Gerador de Prazos Jurídicos Digitais")
 janela.geometry("700x700")
@@ -110,7 +128,18 @@ janela.configure(bg="#0f172a")
 frame = tk.Frame(janela, bg="#0f172a")
 frame.pack(expand=True)
 
+
+
+# (continua com imagem, campos e botões como já estavam...)
 # Exibição da imagem no topo
+tk.Label(
+    frame,
+    text="Sistema de Controle de Prazos",
+    font=("Segoe UI", 16, "bold"),
+    bg="#0f172a",
+    fg="white"
+).pack(pady=(10, 5))
+
 if os.path.exists(IMAGEM_JURIDICA):
     try:
         imagem = Image.open(IMAGEM_JURIDICA)
@@ -125,6 +154,38 @@ if os.path.exists(IMAGEM_JURIDICA):
 # Variáveis para seleção de ramo e tipo
 ramo_var = tk.StringVar()
 tipo_var = tk.StringVar()
+
+# Campo para data do prazo para gerar Excel
+tk.Label(
+    frame,
+    text="Insira a data do prazo (formato: DD/MM):",
+    font=("Segoe UI", 12),
+    bg="#0f172a",
+    fg="#94a3b8"
+).pack()
+
+data_prazo_entry = tk.Entry(
+    frame,
+    font=("Consolas", 14),
+    width=20,
+    justify="center",
+    bd=2,
+    relief="flat",
+    bg="#1e293b",
+    fg="#f8fafc",
+    insertbackground="#f8fafc"
+)
+data_prazo_entry.pack(pady=8)
+
+tk.Button(
+    frame,
+    text="Gerar Arquivo Excel",
+    font=("Segoe UI", 12, "bold"),
+    bg="#2563eb",
+    fg="white",
+    activebackground="#1d4ed8",
+    command=lambda: preencher_pz(data_prazo_entry.get(), janela)
+).pack(pady=10)
 
 # Campo de data da publicação
 tk.Label(
@@ -230,6 +291,8 @@ tk.Label(
 ).pack(side="bottom", pady=(10, 5))
 
 janela.mainloop()
+
+
 
 
 
