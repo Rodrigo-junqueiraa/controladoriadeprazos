@@ -10,7 +10,19 @@ import pandas as pd
 import json
 from datetime import datetime
 
-CAMINHO_JSON = "dados_prazos.json"
+import sys
+
+def caminho_json():
+    if getattr(sys, 'frozen', False):
+        # Executável (.exe)
+        base_path = os.path.dirname(sys.executable)
+    else:
+        # Modo desenvolvimento (.py)
+        base_path = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(base_path, "CAMINHO_JSON")
+
+CAMINHO_JSON = caminho_json()
+
 
 # Função para carregar os prazos salvos
 def carregar_prazos():
@@ -260,75 +272,61 @@ def abrir_janela_preenchimento_multiplo():
     tk.Button(nova_janela, text="Preencher Dados Cliente/Processo", bg="#22c55e", fg="white", command=gerar_excel).pack(pady=10)
     criar_label("Aplicação desenvolvida por: Rodrigo Junqueira de Lima Siqueira").pack(side="bottom", pady=(10, 5))
 
-# Interface principal
+# Interface principal com abas no topo
 janela = tk.Tk()
 janela.title("Sistema de Controle de Prazos")
-janela.geometry("700x700")
+janela.geometry("850x650")
 janela.configure(bg="#0f172a")
 
-frame = tk.Frame(janela, bg="#0f172a")
-frame.pack(expand=True)
+style = ttk.Style()
+style.theme_use('default')
+style.configure("TNotebook", background="#0f172a", borderwidth=0)
+style.configure("TNotebook.Tab", background="#1e293b", foreground="white", font=("Segoe UI", 10, "bold"), padding=(20, 10))
+style.map("TNotebook.Tab", background=[("selected", "#2563eb")], foreground=[("selected", "white")])
+
+# Carregar ícones brancos
+icon_inicio = tk.PhotoImage(file=recurso_path("icon_inicio.png")).subsample(40, 40)
+icon_calc = tk.PhotoImage(file=recurso_path("icon_calc.png")).subsample(40, 40)
+icon_notification = tk.PhotoImage(file=recurso_path("icon_notification.png")).subsample(40, 40)
+icon_listagem = tk.PhotoImage(file=recurso_path("icon_listagem.png")).subsample(40, 40)
+icon_config = tk.PhotoImage(file=recurso_path("icon_config.png")).subsample(40, 40)
+
+abas = ttk.Notebook(janela, style="TNotebook")
+abas.pack(fill="both", expand=True)
+
+# === Aba Principal ===
+aba_principal = tk.Frame(abas, bg="#0f172a")
+abas.add(aba_principal, text="  Início  ", image=icon_inicio, compound="left")
 
 # Imagem
 if os.path.exists(IMAGEM_JURIDICA):
     try:
         imagem = Image.open(IMAGEM_JURIDICA)
-        imagem = imagem.resize((100, 100), Image.LANCZOS)
+        imagem = imagem.resize((140, 140), Image.LANCZOS)
         imagem_tk = ImageTk.PhotoImage(imagem)
-        img_label = tk.Label(frame, image=imagem_tk, bg="#0f172a")
+        img_label = tk.Label(aba_principal, image=imagem_tk, bg="#0f172a")
         img_label.image = imagem_tk
-        img_label.pack(pady=(10, 5))
+        img_label.pack(pady=(80, 5), anchor="center")
     except Exception as e:
         print("Erro ao carregar imagem:", e)
 
-# Título principal
-tk.Label(
-    frame,
-    text="Sistema de Controle de Prazos",
-    font=("Segoe UI", 16, "bold"),
-    bg="#0f172a",
-    fg="white"
-).pack(pady=(5, 5))
+# Título
+tk.Label(aba_principal, text="Sistema de Controle de Prazos", font=("Segoe UI", 16, "bold"), bg="#0f172a", fg="white").pack(pady=(10, 5), anchor="center")
 
-# Botão de preenchimento
-btn_preencher = tk.Button(
-    frame,
-    text="Preencher Cliente / Processo",
-    font=("Segoe UI", 12, "bold"),
-    bg="#22c55e",
-    fg="white",
-    activebackground="#16a34a",
-    command=abrir_janela_preenchimento_multiplo
-)
-btn_preencher.pack(pady=10)
+# Botão preencher
+tk.Button(aba_principal, text="Preencher Cliente / Processo", font=("Segoe UI", 12, "bold"), bg="#22c55e", fg="white", command=abrir_janela_preenchimento_multiplo).pack(pady=(10, 30), anchor="center")
 
-# Separador de seção
-tk.Label(
-    frame,
-    text="Calculadora de Prazos",
-    font=("Segoe UI", 14, "bold"),
-    bg="#0f172a",
-    fg="white"
-).pack(pady=(20, 5))
+# === Aba Calculadora ===
+aba_calculadora = tk.Frame(abas, bg="#0f172a")
+abas.add(aba_calculadora, text="  Calculadora de Prazos  ", image=icon_calc, compound="left")
 
-# Campo de data da publicação
-ramo_var = tk.StringVar()
-tipo_var = tk.StringVar()
-
-publicacao_entry = tk.Entry(
-    frame,
-    font=("Consolas", 14),
-    width=20,
-    justify="center",
-    bd=2,
-    relief="flat",
-    bg="#1e293b",
-    fg="#f8fafc",
-    insertbackground="#f8fafc"
-)
+# Campos da calculadora
+publicacao_entry = tk.Entry(aba_calculadora, font=("Consolas", 14), width=20, justify="center", bd=2, relief="flat", bg="#1e293b", fg="#f8fafc", insertbackground="#f8fafc")
 publicacao_entry.pack(pady=8)
 
-ramo_menu = ttk.Combobox(frame, textvariable=ramo_var, values=list(PRAZOS.keys()), state="readonly", width=40)
+ramo_var = tk.StringVar()
+tipo_var = tk.StringVar()
+ramo_menu = ttk.Combobox(aba_calculadora, textvariable=ramo_var, values=list(PRAZOS.keys()), state="readonly", width=40)
 ramo_menu.pack(pady=2)
 
 def atualizar_tipos(event):
@@ -338,61 +336,38 @@ def atualizar_tipos(event):
 
 ramo_menu.bind("<<ComboboxSelected>>", atualizar_tipos)
 
-
-
-tipo_menu = ttk.Combobox(frame, textvariable=tipo_var, state="readonly", width=40)
+tipo_menu = ttk.Combobox(aba_calculadora, textvariable=tipo_var, state="readonly", width=40)
 tipo_menu.pack(pady=2)
 
-# Botão para calcular prazo
-calcular_btn = tk.Button(
-    frame,
-    text="Calcular Prazo Jurídico",
-    font=("Segoe UI", 11, "bold"),
-    bg="#2563eb",
-    fg="white",
-    activebackground="#1d4ed8",
-    command=exibir_calculo
-)
-calcular_btn.pack(pady=10)
+# Botão calcular
+tk.Button(aba_calculadora, text="Calcular Prazo Jurídico", font=("Segoe UI", 11, "bold"), bg="#2563eb", fg="white", command=exibir_calculo).pack(pady=10)
 
+# Checkbox feriado
 checkbox_var = tk.BooleanVar()
-tk.Checkbutton(
-    frame,
-    text="Ao longo do prazo existe feriados?",
-    variable=checkbox_var,
-    command=alternar_feriado,
-    bg="#0f172a",
-    fg="white",
-    activebackground="#0f172a",
-    selectcolor="#0f172a",
-    font=("Segoe UI", 11)
-).pack(pady=(5, 0))
+tk.Checkbutton(aba_calculadora, text="Ao longo do prazo existe feriados?", variable=checkbox_var, command=alternar_feriado, bg="#0f172a", fg="white", selectcolor="#0f172a", font=("Segoe UI", 11)).pack(pady=(5, 0))
 
-feriado_frame = tk.Frame(frame, bg="#0f172a")
-
+feriado_frame = tk.Frame(aba_calculadora, bg="#0f172a")
 feriado_inicio = tk.Entry(feriado_frame, font=("Consolas", 12), width=10, justify="center", bg="#1e293b", fg="#f8fafc")
 feriado_inicio.grid(row=0, column=1, padx=5)
-
 feriado_fim = tk.Entry(feriado_frame, font=("Consolas", 12), width=10, justify="center", bg="#1e293b", fg="#f8fafc")
 feriado_fim.grid(row=0, column=3, padx=5)
 
-adicionar_feriado_btn = tk.Button(
-    feriado_frame,
-    text="Adicionar Feriado",
-    font=("Segoe UI", 10, "bold"),
-    bg="#334155",
-    fg="white",
-    command=adicionar_feriado
-)
+adicionar_feriado_btn = tk.Button(feriado_frame, text="Adicionar Feriado", font=("Segoe UI", 10, "bold"), bg="#334155", fg="white", command=adicionar_feriado)
 adicionar_feriado_btn.grid(row=0, column=4, padx=5)
 
-tk.Label(
-    frame,
-    text="Aplicação desenvolvida por: Rodrigo Junqueira de Lima Siqueira",
-    font=("Segoe UI", 8),
-    bg="#0f172a",
-    fg="#64748b"
-).pack(side="bottom", pady=(10, 5))
+# === Aba Notificações ===
+aba_notificacoes = tk.Frame(abas, bg="#0f172a")
+abas.add(aba_notificacoes, text="  Notificações  ", image=icon_notification, compound="left")
+
+# === Aba Listagem ===
+aba_listagem = tk.Frame(abas, bg="#0f172a")
+abas.add(aba_listagem, text="  Listagem de Prazos  ", image=icon_listagem, compound="left")
+
+# === Aba Configurações ===
+aba_config = tk.Frame(abas, bg="#0f172a")
+abas.add(aba_config, text="  Configurações  ", image=icon_config, compound="left")
+
+# Rodapé
+tk.Label(janela, text="Aplicação desenvolvida por: Rodrigo Junqueira de Lima Siqueira", font=("Segoe UI", 8), bg="#0f172a", fg="#64748b").pack(side="bottom", pady=(10, 5))
 
 janela.mainloop()
-

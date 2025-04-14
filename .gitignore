@@ -1,0 +1,17 @@
+# Arquivos temporários e caches
+__pycache__/
+*.pyc
+*.pyo
+*.log
+
+# Executáveis e builds
+*.exe
+dist/
+build/
+
+# Planilhas e dados locais
+*.xlsx
+dados_prazos.json
+
+# Arquivos gerados por PyInstaller
+*.spec
