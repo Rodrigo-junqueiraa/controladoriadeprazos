@@ -100,35 +100,43 @@ def adicionar_feriado():
 def abrir_janela_preenchimento_multiplo():
     nova_janela = tk.Toplevel(janela)
     nova_janela.title("Múltiplos Preenchimentos")
-    nova_janela.geometry("500x600")
+    nova_janela.geometry("520x650")
     nova_janela.configure(bg="#0f172a")
 
-    tk.Label(nova_janela, text="Data do Prazo (DD/MM):", bg="#0f172a", fg="white").pack()
+    def criar_label(texto):
+        return tk.Label(nova_janela, text=texto, bg="#0f172a", fg="white")
+
+    criar_label("Data do Prazo (DD/MM):").pack()
     entry_data_prazo = tk.Entry(nova_janela)
     entry_data_prazo.pack()
 
-    tk.Label(nova_janela, text="Nome:", bg="#0f172a", fg="white").pack()
+    criar_label("Nome:").pack()
     entry_nome = tk.Entry(nova_janela)
     entry_nome.pack()
 
-    tk.Label(nova_janela, text="Processo:", bg="#0f172a", fg="white").pack()
+    criar_label("Processo:").pack()
     entry_processo = tk.Entry(nova_janela)
     entry_processo.pack()
 
-    tk.Label(nova_janela, text="Tipo de Prazo:", bg="#0f172a", fg="white").pack()
+    criar_label("Tipo de Prazo:").pack()
     entry_tipo = tk.Entry(nova_janela)
     entry_tipo.pack()
 
-    tk.Label(nova_janela, text="Responsável:", bg="#0f172a", fg="white").pack()
+    criar_label("Responsável:").pack()
     entry_resp = tk.Entry(nova_janela)
     entry_resp.pack()
 
-    tk.Label(nova_janela, text="Publicação:", bg="#0f172a", fg="white").pack()
+    criar_label("Publicação:").pack()
     entry_pub = tk.Entry(nova_janela)
     entry_pub.pack()
 
-    tree = ttk.Treeview(nova_janela, columns=("Nome", "Processo", "Tipo", "Data", "Resp", "Pub"), show="headings")
-    for col in ("Nome", "Processo", "Tipo", "Data", "Resp", "Pub"):
+    criar_label("Observações:").pack()
+    entry_obs = tk.Text(nova_janela, height=3, wrap="word")
+    entry_obs.pack(fill="x", padx=10, pady=5)
+
+    colunas = ("Nome", "Processo", "Tipo", "Data", "Resp", "Pub", "Obs")
+    tree = ttk.Treeview(nova_janela, columns=colunas, show="headings")
+    for col in colunas:
         tree.heading(col, text=col)
     tree.pack(pady=5, fill="both", expand=True)
 
@@ -139,14 +147,16 @@ def abrir_janela_preenchimento_multiplo():
         data = entry_data_prazo.get()
         resp = entry_resp.get()
         pub = entry_pub.get()
-        if nome and processo and tipo and data and resp and pub:
-            registros.append((nome, processo, tipo, data, resp, pub))
-            tree.insert("", "end", values=(nome, processo, tipo, data, resp, pub))
+        obs = entry_obs.get("1.0", tk.END).strip()
+        if all([nome, processo, tipo, data, resp, pub]):
+            registros.append((nome, processo, tipo, data, resp, pub, obs))
+            tree.insert("", "end", values=(nome, processo, tipo, data, resp, pub, obs[:30] + ("..." if len(obs) > 30 else "")))
             entry_nome.delete(0, tk.END)
             entry_processo.delete(0, tk.END)
             entry_tipo.delete(0, tk.END)
             entry_resp.delete(0, tk.END)
             entry_pub.delete(0, tk.END)
+            entry_obs.delete("1.0", tk.END)
 
     def gerar_excel():
         if not registros:
@@ -160,14 +170,24 @@ def abrir_janela_preenchimento_multiplo():
                 if bloco_index >= len(registros):
                     break
                 if row[0].value and str(row[0].value).strip().upper() == "NOME" and row[1].value in (None, ""):
-                    nome, processo, tipo, data, resp, pub = registros[bloco_index]
+                    nome, processo, tipo, data, resp, pub, obs = registros[bloco_index]
                     ws.cell(row=i+1, column=2).value = nome
                     ws.cell(row=i+2, column=2).value = processo
                     ws.cell(row=i+3, column=2).value = tipo
                     ws.cell(row=i+1, column=4).value = resp
                     ws.cell(row=i+2, column=4).value = pub
                     ws.cell(row=i+3, column=4).value = data
+
+                    # Quebra observações em 3 partes para preencher F, G, H
+                    obs_linhas = obs.strip().splitlines()
+                    texto_total = " ".join(obs_linhas)
+                    partes = [texto_total[i:i+50] for i in range(0, len(texto_total), 50)]
+                    for j in range(3):
+                        if j < len(partes):
+                            ws.cell(row=i+1+j, column=6).value = partes[j]
+
                     bloco_index += 1
+
             salvar_em = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
             if salvar_em:
                 wb.save(salvar_em)
@@ -177,7 +197,7 @@ def abrir_janela_preenchimento_multiplo():
 
     tk.Button(nova_janela, text="Adicionar", bg="#2563eb", fg="white", command=adicionar).pack(pady=5)
     tk.Button(nova_janela, text="Preencher Dados Cliente/Processo", bg="#22c55e", fg="white", command=gerar_excel).pack(pady=10)
-    tk.Label(nova_janela, text="Aplicação desenvolvida por: Rodrigo Junqueira de Lima Siqueira", font=("Segoe UI", 8), bg="#0f172a", fg="#64748b").pack(side="bottom", pady=(10, 5))
+    criar_label("Aplicação desenvolvida por: Rodrigo Junqueira de Lima Siqueira").pack(side="bottom", pady=(10, 5))
 
 # Interface principal
 janela = tk.Tk()
