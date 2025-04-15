@@ -5,7 +5,7 @@ a = Analysis(
     ['app.py'],
     pathex=[],
     binaries=[],
-    datas=[('justica.png', '.')],
+    datas=[('icon_inicio.png', '.'), ('icon_calc.png', '.'), ('icon_notification.png', '.'), ('icon_listagem.png', '.'), ('icon_config.png', '.'), ('justica.png', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},
@@ -35,4 +35,5 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon=['icone_juridico.ico'],
 )

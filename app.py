@@ -11,6 +11,17 @@ import json
 from datetime import datetime
 
 import sys
+import zipfile
+from datetime import datetime
+
+
+def recurso_path(rel_path):
+    try:
+        base_path = sys._MEIPASS  # usado quando empacotado pelo PyInstaller
+    except Exception:
+        base_path = os.path.abspath(".")  # usado no modo desenvolvimento
+    return os.path.join(base_path, rel_path)
+
 
 def caminho_json():
     if getattr(sys, 'frozen', False):
@@ -272,6 +283,16 @@ def abrir_janela_preenchimento_multiplo():
     tk.Button(nova_janela, text="Preencher Dados Cliente/Processo", bg="#22c55e", fg="white", command=gerar_excel).pack(pady=10)
     criar_label("Aplicação desenvolvida por: Rodrigo Junqueira de Lima Siqueira").pack(side="bottom", pady=(10, 5))
 
+def recurso_path(rel_path):
+    try:
+        base_path = sys._MEIPASS  # quando empacotado
+    except Exception:
+        base_path = os.path.abspath(".")  # durante desenvolvimento
+    return os.path.join(base_path, rel_path)
+
+
+IMAGEM_JURIDICA = os.path.join(os.path.dirname(__file__), "justica.png")
+
 # Interface principal com abas no topo
 janela = tk.Tk()
 janela.title("Sistema de Controle de Prazos")
@@ -321,13 +342,14 @@ aba_calculadora = tk.Frame(abas, bg="#0f172a")
 abas.add(aba_calculadora, text="  Calculadora de Prazos  ", image=icon_calc, compound="left")
 
 # Campos da calculadora
+tk.Label(aba_calculadora, text="Digite aqui a data de publicação", bg="#0f172a", fg="white", font=("Segoe UI", 16, "bold")).pack(pady=(100, 5), anchor="center")
 publicacao_entry = tk.Entry(aba_calculadora, font=("Consolas", 14), width=20, justify="center", bd=2, relief="flat", bg="#1e293b", fg="#f8fafc", insertbackground="#f8fafc")
-publicacao_entry.pack(pady=8)
+publicacao_entry.pack(pady=5, anchor="center")
 
 ramo_var = tk.StringVar()
 tipo_var = tk.StringVar()
 ramo_menu = ttk.Combobox(aba_calculadora, textvariable=ramo_var, values=list(PRAZOS.keys()), state="readonly", width=40)
-ramo_menu.pack(pady=2)
+ramo_menu.pack(pady=2, anchor="center")
 
 def atualizar_tipos(event):
     ramo = ramo_var.get()
@@ -337,14 +359,14 @@ def atualizar_tipos(event):
 ramo_menu.bind("<<ComboboxSelected>>", atualizar_tipos)
 
 tipo_menu = ttk.Combobox(aba_calculadora, textvariable=tipo_var, state="readonly", width=40)
-tipo_menu.pack(pady=2)
+tipo_menu.pack(pady=2, anchor="center")
 
 # Botão calcular
-tk.Button(aba_calculadora, text="Calcular Prazo Jurídico", font=("Segoe UI", 11, "bold"), bg="#2563eb", fg="white", command=exibir_calculo).pack(pady=10)
+tk.Button(aba_calculadora, text="Calcular Prazo Jurídico", font=("Segoe UI", 11, "bold"), bg="#2563eb", fg="white", command=exibir_calculo).pack(pady=10, anchor="center")
 
 # Checkbox feriado
 checkbox_var = tk.BooleanVar()
-tk.Checkbutton(aba_calculadora, text="Ao longo do prazo existe feriados?", variable=checkbox_var, command=alternar_feriado, bg="#0f172a", fg="white", selectcolor="#0f172a", font=("Segoe UI", 11)).pack(pady=(5, 0))
+tk.Checkbutton(aba_calculadora, text="Ao longo do prazo existem feriados?", variable=checkbox_var, command=alternar_feriado, bg="#0f172a", fg="white", selectcolor="#0f172a", font=("Segoe UI", 11)).pack(pady=(5, 0), anchor="center")
 
 feriado_frame = tk.Frame(aba_calculadora, bg="#0f172a")
 feriado_inicio = tk.Entry(feriado_frame, font=("Consolas", 12), width=10, justify="center", bg="#1e293b", fg="#f8fafc")
@@ -359,13 +381,207 @@ adicionar_feriado_btn.grid(row=0, column=4, padx=5)
 aba_notificacoes = tk.Frame(abas, bg="#0f172a")
 abas.add(aba_notificacoes, text="  Notificações  ", image=icon_notification, compound="left")
 
+tk.Label(aba_notificacoes, text="Histórico de Notificações", font=("Segoe UI", 14, "bold"),
+         bg="#0f172a", fg="white").pack(pady=(20, 10))
+
+# Treeview
+colunas = ("Cliente", "Processo", "Tipo de Prazo", "Data Fatal", "Data de Registro")
+tree_notificacoes = ttk.Treeview(aba_notificacoes, columns=colunas, show="headings", height=20)
+
+for col in colunas:
+    tree_notificacoes.heading(col, text=col)
+    tree_notificacoes.column(col, width=150, anchor="center")
+
+tree_notificacoes.pack(fill="both", padx=10, pady=(0, 10), expand=True)
+
+def carregar_notificacoes():
+    tree_notificacoes.delete(*tree_notificacoes.get_children())  # Limpa tabela
+    try:
+        prazos = carregar_prazos()
+        for prazo in prazos:
+            if prazo.get("notificado"):
+                tree_notificacoes.insert("", "end", values=(
+                    prazo.get("cliente", ""),
+                    prazo.get("processo", ""),
+                    prazo.get("tipo_prazo", ""),
+                    prazo.get("data_fatal", ""),
+                    prazo.get("registro_em", "")
+                ))
+    except Exception as e:
+        messagebox.showerror("Erro", f"Erro ao carregar notificações:\n{e}")
+
+def limpar_notificacoes():
+    if messagebox.askyesno("Confirmação", "Deseja realmente limpar todas as notificações?"):
+        try:
+            prazos = carregar_prazos()
+            prazos_filtrados = [p for p in prazos if not p.get("notificado")]
+            salvar_prazos(prazos_filtrados)
+            carregar_notificacoes()
+            messagebox.showinfo("Sucesso", "Notificações removidas com sucesso.")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao limpar notificações:\n{e}")
+
+tk.Button(aba_notificacoes, text="Limpar Notificações", bg="#dc2626", fg="white",
+          font=("Segoe UI", 10, "bold"), command=limpar_notificacoes).pack(pady=(0, 10))
+
+# Inicializa exibição
+carregar_notificacoes()
+
+
+
+
 # === Aba Listagem ===
 aba_listagem = tk.Frame(abas, bg="#0f172a")
 abas.add(aba_listagem, text="  Listagem de Prazos  ", image=icon_listagem, compound="left")
 
+tk.Label(aba_listagem, text="Listar prazos por data", font=("Segoe UI", 14, "bold"),
+         bg="#0f172a", fg="white").pack(pady=(20, 5))
+
+frame_data = tk.Frame(aba_listagem, bg="#0f172a")
+frame_data.pack(pady=5)
+
+tk.Label(frame_data, text="Data (DD/MM):", font=("Segoe UI", 10), bg="#0f172a", fg="white").pack(side="left", padx=5)
+entry_data_busca = tk.Entry(frame_data, font=("Segoe UI", 11), width=10, justify="center")
+entry_data_busca.pack(side="left", padx=5)
+
+# Treeview
+colunas_listagem = ("Cliente", "Processo", "Tipo de Prazo", "Data Fatal", "Registro em")
+tree_listagem = ttk.Treeview(aba_listagem, columns=colunas_listagem, show="headings", height=20)
+
+for col in colunas_listagem:
+    tree_listagem.heading(col, text=col)
+    tree_listagem.column(col, width=150, anchor="center")
+
+tree_listagem.pack(fill="both", padx=10, pady=(10, 5), expand=True)
+
+def buscar_prazos_por_data():
+    data = entry_data_busca.get().strip()
+    if not data:
+        messagebox.showwarning("Aviso", "Insira uma data no formato DD/MM.")
+        return
+    try:
+        datetime.strptime(data, "%d/%m")
+    except ValueError:
+        messagebox.showerror("Erro", "Data inválida. Use o formato DD/MM.")
+        return
+
+    tree_listagem.delete(*tree_listagem.get_children())
+    prazos = carregar_prazos()
+    encontrados = [p for p in prazos if p.get("data_fatal") == data]
+    if not encontrados:
+        messagebox.showinfo("Resultado", "Nenhum prazo encontrado para essa data.")
+        return
+
+    for p in encontrados:
+        tree_listagem.insert("", "end", values=(
+            p.get("cliente", ""),
+            p.get("processo", ""),
+            p.get("tipo_prazo", ""),
+            p.get("data_fatal", ""),
+            p.get("registro_em", "")
+        ))
+
+tk.Button(aba_listagem, text="Buscar", font=("Segoe UI", 10, "bold"),
+          bg="#2563eb", fg="white", command=buscar_prazos_por_data).pack(pady=(0, 10))
+
+
 # === Aba Configurações ===
 aba_config = tk.Frame(abas, bg="#0f172a")
 abas.add(aba_config, text="  Configurações  ", image=icon_config, compound="left")
+
+tk.Label(aba_config, text="Configurações do Sistema", font=("Segoe UI", 14, "bold"),
+         bg="#0f172a", fg="white").pack(pady=(20, 10))
+
+def limpar_todos_os_prazos():
+    resposta = messagebox.askyesnocancel(
+        "⚠️ Exportar antes de apagar?",
+        "Deseja exportar um backup dos prazos antes de apagar tudo?\n\nVocê poderá importá-los novamente pelo sistema."
+    )
+
+    if resposta is None:
+        return  # Cancelado
+
+    elif resposta:  # Sim, exportar antes de apagar
+        try:
+            prazos = carregar_prazos()
+            if not prazos:
+                messagebox.showinfo("Nada para exportar", "Não há prazos para exportar.")
+                return
+
+            nome_json = f"backup_prazos_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+            nome_zip = nome_json.replace(".json", ".zip")
+
+            with open(nome_json, "w", encoding="utf-8") as f:
+                json.dump(prazos, f, indent=4, ensure_ascii=False)
+
+            with zipfile.ZipFile(nome_zip, "w", zipfile.ZIP_DEFLATED) as zipf:
+                zipf.write(nome_json)
+
+            os.remove(nome_json)  # limpa o json temporário
+
+            messagebox.showinfo("Backup gerado", f"Backup salvo como:\n{nome_zip}\n\nVocê pode importá-lo pela aba Configurações.")
+        except Exception as e:
+            messagebox.showerror("Erro ao exportar", f"Falha ao gerar o backup:\n{e}")
+            return  # cancela a limpeza caso falhe
+
+    # Segunda confirmação
+    confirmar = messagebox.askyesno(
+        "⚠️ Confirmar exclusão",
+        "Tem certeza que deseja apagar TODOS os prazos?\n\nEsta ação é irreversível."
+    )
+
+    if confirmar:
+        try:
+            salvar_prazos([])
+            messagebox.showinfo("Sucesso", "Todos os prazos foram apagados com segurança.")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao apagar: {e}")
+
+
+def exportar_backup():
+    local = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON", "*.json")])
+    if local:
+        try:
+            with open(local, "w", encoding="utf-8") as f:
+                json.dump(carregar_prazos(), f, indent=4, ensure_ascii=False)
+            messagebox.showinfo("Backup", f"Backup salvo com sucesso em:\n{local}")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao exportar backup:\n{e}")
+
+def importar_backup():
+    caminho = filedialog.askopenfilename(filetypes=[("JSON", "*.json")])
+    if caminho:
+        try:
+            with open(caminho, "r", encoding="utf-8") as f:
+                dados = json.load(f)
+            salvar_prazos(dados)
+            messagebox.showinfo("Restauração", "Backup restaurado com sucesso.")
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao restaurar backup:\n{e}")
+
+tk.Button(aba_config, text="Exportar Backup de Prazos", bg="#3b82f6", fg="white",
+          font=("Segoe UI", 10, "bold"), command=exportar_backup).pack(pady=5)
+
+tk.Button(aba_config, text="Importar Backup de Prazos", bg="#10b981", fg="white",
+          font=("Segoe UI", 10, "bold"), command=importar_backup).pack(pady=5)
+
+tk.Button(aba_config, text="Limpar Todos os Prazos", bg="#dc2626", fg="white",
+          font=("Segoe UI", 10, "bold"), command=limpar_todos_os_prazos).pack(pady=5)
+
+tk.Label(aba_config, text="Desenvolvido por Rodrigo Junqueira - Versão 1.0",
+         bg="#0f172a", fg="#94a3b8", font=("Segoe UI", 9)).pack(side="bottom", pady=(10, 5))
+
+
+# Funções placeholder para evitar erro de execução
+
+def abrir_janela_preenchimento_multiplo():
+    print("Abrir janela de preenchimento múltiplo")
+
+def exibir_calculo():
+    print("Executar cálculo do prazo")
+
+def alternar_feriado():
+    print("Alternar visualização de feriado")
 
 # Rodapé
 tk.Label(janela, text="Aplicação desenvolvida por: Rodrigo Junqueira de Lima Siqueira", font=("Segoe UI", 8), bg="#0f172a", fg="#64748b").pack(side="bottom", pady=(10, 5))
