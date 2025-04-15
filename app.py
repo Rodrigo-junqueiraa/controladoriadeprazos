@@ -42,22 +42,52 @@ def carregar_prazos():
     with open(CAMINHO_JSON, "r", encoding="utf-8") as f:
         return json.load(f)
 
+
+
+# Função para salvar os prazos no JSON
+
+
+
+
+
+# Função para carregar notificações
+def carregar_notificacoes():
+    tree_notificacoes.delete(*tree_notificacoes.get_children())
+    try:
+        prazos = carregar_prazos()
+        for prazo in prazos:
+            if prazo.get("notificado"):
+                tree_notificacoes.insert("", "end", values=(
+                    prazo.get("cliente", ""),
+                    prazo.get("processo", ""),
+                    prazo.get("tipo_prazo", ""),
+                    prazo.get("data_para_notificar", ""),
+                    prazo.get("registro_em", "")
+                ))
+    except Exception as e:
+        messagebox.showerror("Erro", f"Erro ao carregar notificações:\n{e}")
+
 # Função para salvar os prazos no JSON
 def salvar_prazos(prazos):
+    carregar_notificacoes()
     with open(CAMINHO_JSON, "w", encoding="utf-8") as f:
         json.dump(prazos, f, indent=4, ensure_ascii=False)
+
 
 # Função para registrar novos prazos no JSON
 # Ela será chamada dentro do gerar_excel()
 def registrar_prazos_em_json():
     prazos_existentes = carregar_prazos()
     novos_registros = []
-    for nome, processo, tipo, data, resp, pub, obs in registros:
+    for nome, processo, tipo, data, data_notificar, resp, pub, obs in registros:
         novo = {
             "cliente": nome,
             "processo": processo,
             "tipo_prazo": tipo,
             "data_fatal": data,
+            "data_para_notificar": datetime.strptime(data_notificar.strip(), "%d/%m").strftime("%d/%m"),
+            "lembrete": "FATAL",
+            "lembrete": "FATAL",
             "notificado": False,
             "registro_em": datetime.now().strftime("%Y-%m-%d %H:%M")
         }
@@ -68,23 +98,32 @@ def registrar_prazos_em_json():
 
 # Verifica se há prazos para hoje e avisa
 # Pode ser chamado ao abrir o sistema ou com um botão próprio
+
 def verificar_prazos_hoje():
     hoje = datetime.now().strftime("%d/%m")
     prazos = carregar_prazos()
     alertas = []
+
     for prazo in prazos:
-        if not prazo["notificado"] and prazo["data_fatal"] == hoje:
+        data_notificar = prazo.get("data_para_notificar", "").strip()
+        if data_notificar == hoje:
             alertas.append(prazo)
             prazo["notificado"] = True
 
     if alertas:
-        texto = "\n".join([f"{p['cliente']} - {p['tipo_prazo']} - {p['processo']}" for p in alertas])
-        messagebox.showinfo("⚠️ Prazos para hoje", f"Os seguintes prazos vencem hoje:\n\n{texto}")
+        texto = "\n".join([
+            "{} - {} - {} (FATAL)".format(p['cliente'], p['tipo_prazo'], p['processo'])
+            for p in alertas
+        ])
+        messagebox.showinfo("🔔 Notificação", "Prazos configurados para hoje:\n\n{}".format(texto))
 
     salvar_prazos(prazos)
+    carregar_notificacoes()
+
+
+
 
 # Chamada da verificação automática ao abrir o app
-verificar_prazos_hoje()
 
 
 print("Iniciando app...")
@@ -179,7 +218,7 @@ def adicionar_feriado():
 def abrir_janela_preenchimento_multiplo():
     nova_janela = tk.Toplevel(janela)
     nova_janela.title("Múltiplos Preenchimentos")
-    nova_janela.geometry("520x650")
+    nova_janela.geometry("520x720")
     nova_janela.configure(bg="#0f172a")
 
     def criar_label(texto):
@@ -205,6 +244,10 @@ def abrir_janela_preenchimento_multiplo():
     entry_resp = tk.Entry(nova_janela)
     entry_resp.pack()
 
+    criar_label("Data para notificar o Fatal (DD/MM):").pack()
+    entry_data_notificar = tk.Entry(nova_janela)
+    entry_data_notificar.pack()
+
     criar_label("Publicação:").pack()
     entry_pub = tk.Entry(nova_janela)
     entry_pub.pack()
@@ -227,8 +270,9 @@ def abrir_janela_preenchimento_multiplo():
         resp = entry_resp.get()
         pub = entry_pub.get()
         obs = entry_obs.get("1.0", tk.END).strip()
-        if all([nome, processo, tipo, data, resp, pub]):
-            registros.append((nome, processo, tipo, data, resp, pub, obs))
+        data_notificar = entry_data_notificar.get()
+        if all([nome, processo, tipo, data, data_notificar, resp, pub]):
+            registros.append((nome, processo, tipo, data, data_notificar, resp, pub, obs))
             tree.insert("", "end", values=(nome, processo, tipo, data, resp, pub, obs[:30] + ("..." if len(obs) > 30 else "")))
             entry_nome.delete(0, tk.END)
             entry_processo.delete(0, tk.END)
@@ -249,7 +293,7 @@ def abrir_janela_preenchimento_multiplo():
                 if bloco_index >= len(registros):
                     break
                 if row[0].value and str(row[0].value).strip().upper() == "NOME" and row[1].value in (None, ""):
-                    nome, processo, tipo, data, resp, pub, obs = registros[bloco_index]
+                    nome, processo, tipo, data, data_notificar, resp, pub, obs = registros[bloco_index]
                     ws.cell(row=i+1, column=2).value = nome
                     ws.cell(row=i+2, column=2).value = processo
                     ws.cell(row=i+3, column=2).value = tipo
@@ -334,6 +378,9 @@ if os.path.exists(IMAGEM_JURIDICA):
 # Título
 tk.Label(aba_principal, text="Sistema de Controle de Prazos", font=("Segoe UI", 16, "bold"), bg="#0f172a", fg="white").pack(pady=(10, 5), anchor="center")
 
+# Botão conferir prazos fatais
+tk.Button(aba_principal, text="Conferir prazos fatais do dia", font=("Segoe UI", 11, "bold"), bg="#dc2626", fg="white", command=verificar_prazos_hoje).pack(pady=(10, 5), anchor="center")
+
 # Botão preencher
 tk.Button(aba_principal, text="Preencher Cliente / Processo", font=("Segoe UI", 12, "bold"), bg="#22c55e", fg="white", command=abrir_janela_preenchimento_multiplo).pack(pady=(10, 30), anchor="center")
 
@@ -385,7 +432,7 @@ tk.Label(aba_notificacoes, text="Histórico de Notificações", font=("Segoe UI"
          bg="#0f172a", fg="white").pack(pady=(20, 10))
 
 # Treeview
-colunas = ("Cliente", "Processo", "Tipo de Prazo", "Data Fatal", "Data de Registro")
+colunas = ("Cliente", "Processo", "Tipo de Prazo", "Data", "Data de Registro")
 tree_notificacoes = ttk.Treeview(aba_notificacoes, columns=colunas, show="headings", height=20)
 
 for col in colunas:
@@ -404,7 +451,7 @@ def carregar_notificacoes():
                     prazo.get("cliente", ""),
                     prazo.get("processo", ""),
                     prazo.get("tipo_prazo", ""),
-                    prazo.get("data_fatal", ""),
+                    prazo.get("data_para_notificar", ""),
                     prazo.get("registro_em", "")
                 ))
     except Exception as e:
@@ -445,7 +492,7 @@ entry_data_busca = tk.Entry(frame_data, font=("Segoe UI", 11), width=10, justify
 entry_data_busca.pack(side="left", padx=5)
 
 # Treeview
-colunas_listagem = ("Cliente", "Processo", "Tipo de Prazo", "Data Fatal", "Registro em")
+colunas_listagem = ("Cliente", "Processo", "Tipo de Prazo", "Data", "Registro em")
 tree_listagem = ttk.Treeview(aba_listagem, columns=colunas_listagem, show="headings", height=20)
 
 for col in colunas_listagem:
@@ -477,7 +524,7 @@ def buscar_prazos_por_data():
             p.get("cliente", ""),
             p.get("processo", ""),
             p.get("tipo_prazo", ""),
-            p.get("data_fatal", ""),
+            p.get("data_para_notificar", ""),
             p.get("registro_em", "")
         ))
 
@@ -586,4 +633,6 @@ def alternar_feriado():
 # Rodapé
 tk.Label(janela, text="Aplicação desenvolvida por: Rodrigo Junqueira de Lima Siqueira", font=("Segoe UI", 8), bg="#0f172a", fg="#64748b").pack(side="bottom", pady=(10, 5))
 
+carregar_notificacoes()
+verificar_prazos_hoje()
 janela.mainloop()
