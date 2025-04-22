@@ -432,7 +432,7 @@ tk.Label(aba_notificacoes, text="Histórico de Notificações", font=("Segoe UI"
          bg="#0f172a", fg="white").pack(pady=(20, 10))
 
 # Treeview
-colunas = ("Cliente", "Processo", "Tipo de Prazo", "Data", "Data de Registro")
+colunas = ("Cliente", "Processo", "Tipo de Prazo", "Data Fatal", "Data de Registro")
 tree_notificacoes = ttk.Treeview(aba_notificacoes, columns=colunas, show="headings", height=20)
 
 for col in colunas:
@@ -490,9 +490,11 @@ frame_data.pack(pady=5)
 tk.Label(frame_data, text="Data (DD/MM):", font=("Segoe UI", 10), bg="#0f172a", fg="white").pack(side="left", padx=5)
 entry_data_busca = tk.Entry(frame_data, font=("Segoe UI", 11), width=10, justify="center")
 entry_data_busca.pack(side="left", padx=5)
+tk.Label(aba_listagem, text="⚠️ Dica: a busca considera a data de registro no sistema, não a data fatal.",
+         font=("Segoe UI", 8), bg="#0f172a", fg="#facc15", justify="left").pack(pady=(2, 10), padx=10, anchor="w")
 
 # Treeview
-colunas_listagem = ("Cliente", "Processo", "Tipo de Prazo", "Data", "Registro em")
+colunas_listagem = ("Cliente", "Processo", "Tipo de Prazo", "Data Fatal", "Registro em")
 tree_listagem = ttk.Treeview(aba_listagem, columns=colunas_listagem, show="headings", height=20)
 
 for col in colunas_listagem:
