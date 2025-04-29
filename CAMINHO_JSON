@@ -1,12 +1,22 @@
 [
     {
         "cliente": "John Wick",
-        "processo": "123456-78.2025.5.03.0007",
+        "processo": "1234567-89.2025.5.03.0007",
         "tipo_prazo": "Embargos de Declaração",
         "data_fatal": "14/04",
-        "data_para_notificar": "15/04",
+        "data_para_notificar": "22/04",
         "lembrete": "FATAL",
         "notificado": true,
-        "registro_em": "2025-04-15 18:15"
+        "registro_em": "2025-04-22 12:11"
+    },
+    {
+        "cliente": "abcd",
+        "processo": "1234567-89.2025.5.03.0041",
+        "tipo_prazo": "eds",
+        "data_fatal": "29/04",
+        "data_para_notificar": "30/04",
+        "lembrete": "FATAL",
+        "notificado": false,
+        "registro_em": "2025-04-29 08:45"
     }
 ]

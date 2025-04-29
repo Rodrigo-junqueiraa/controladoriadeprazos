@@ -1,3 +1,4 @@
+import sys
 import os
 import sys
 import tkinter as tk
@@ -13,6 +14,206 @@ from datetime import datetime
 import sys
 import zipfile
 from datetime import datetime
+
+def abrir_janela_preenchimento_multiplo():
+    nova_janela = tk.Toplevel(janela)
+    nova_janela.title("Múltiplos Preenchimentos")
+    nova_janela.geometry("520x720")
+    nova_janela.configure(bg="#0f172a")
+    
+    
+
+    def criar_label(texto):
+        return tk.Label(nova_janela, text=texto, bg="#0f172a", fg="white")
+
+    criar_label("Data do Prazo (DD/MM):").pack()
+    entry_data_prazo = tk.Entry(nova_janela)
+    entry_data_prazo.pack()
+
+    criar_label("Nome:").pack()
+    entry_nome = tk.Entry(nova_janela)
+    entry_nome.pack()
+
+    criar_label("Processo:").pack()
+    entry_processo = tk.Entry(nova_janela)
+    entry_processo.pack()
+
+    criar_label("Tipo de Prazo:").pack()
+    entry_tipo = tk.Entry(nova_janela)
+    entry_tipo.pack()
+
+    criar_label("Responsável:").pack()
+    entry_resp = tk.Entry(nova_janela)
+    entry_resp.pack()
+
+    criar_label("Data para notificar o Fatal (DD/MM):").pack()
+    entry_data_notificar = tk.Entry(nova_janela)
+    entry_data_notificar.pack()
+
+    criar_label("Publicação:").pack()
+    entry_pub = tk.Entry(nova_janela)
+    entry_pub.pack()
+
+    criar_label("Observações:").pack()
+    entry_obs = tk.Text(nova_janela, height=3, wrap="word")
+    entry_obs.pack(fill="x", padx=10, pady=5)
+
+    colunas = ("Nome", "Processo", "Tipo", "Data", "Resp", "Pub", "Obs")
+    tree = ttk.Treeview(nova_janela, columns=colunas, show="headings")
+    for col in colunas:
+        tree.heading(col, text=col)
+    tree.pack(pady=5, fill="both", expand=True)
+
+    dado_editando = None
+
+    def adicionar():
+        nome = entry_nome.get()
+        processo = entry_processo.get()
+        tipo = entry_tipo.get()
+        data = entry_data_prazo.get()
+        resp = entry_resp.get()
+        pub = entry_pub.get()
+        obs = entry_obs.get("1.0", tk.END).strip()
+        data_notificar = entry_data_notificar.get()
+        if all([nome, processo, tipo, data, data_notificar, resp, pub]):
+            for r in registros:
+                if r[0] == nome and r[1] == processo and r[2] == tipo:
+                    messagebox.showwarning("Duplicidade", "Este registro já existe!")
+                    return
+            registros.append((nome, processo, tipo, data, data_notificar, resp, pub, obs))
+            tree.insert("", "end", values=(nome, processo, tipo, data, resp, pub, obs[:30] + ("..." if len(obs) > 30 else "")))
+            entry_nome.delete(0, tk.END)
+            entry_processo.delete(0, tk.END)
+            entry_tipo.delete(0, tk.END)
+            entry_data_prazo.delete(0, tk.END)
+            entry_resp.delete(0, tk.END)
+            entry_pub.delete(0, tk.END)
+            entry_obs.delete("1.0", tk.END)
+
+    def editar_registro():
+        nonlocal dado_editando
+        item = tree.selection()
+        if not item:
+            messagebox.showwarning("Aviso", "Selecione um registro para editar.")
+            return
+        dado_editando = item[0]
+        valores = tree.item(dado_editando, "values")
+        entry_nome.delete(0, tk.END)
+        entry_nome.insert(0, valores[0])
+        entry_processo.delete(0, tk.END)
+        entry_processo.insert(0, valores[1])
+        entry_tipo.delete(0, tk.END)
+        entry_tipo.insert(0, valores[2])
+        entry_data_prazo.delete(0, tk.END)
+        entry_data_prazo.insert(0, valores[3])
+        entry_resp.delete(0, tk.END)
+        entry_resp.insert(0, valores[4])
+        entry_pub.delete(0, tk.END)
+        entry_pub.insert(0, valores[5])
+        entry_obs.delete("1.0", tk.END)
+        entry_obs.insert("1.0", valores[6])
+
+    def salvar_alteracoes():
+        nonlocal dado_editando
+        if not dado_editando:
+            messagebox.showwarning("Aviso", "Nenhum registro selecionado para edição.")
+            return
+        nome = entry_nome.get()
+        processo = entry_processo.get()
+        tipo = entry_tipo.get()
+        data = entry_data_prazo.get()
+        resp = entry_resp.get()
+        pub = entry_pub.get()
+        obs = entry_obs.get("1.0", tk.END).strip()
+        data_notificar = entry_data_notificar.get()
+        indice = tree.index(dado_editando)
+        registros[indice] = (nome, processo, tipo, data, data_notificar, resp, pub, obs)
+        tree.item(dado_editando, values=(nome, processo, tipo, data, resp, pub, obs[:30] + ("..." if len(obs) > 30 else "")))
+        dado_editando = None
+
+    def excluir_registro():
+        item = tree.selection()
+        if not item:
+            messagebox.showwarning("Aviso", "Selecione um registro para excluir.")
+            return
+        confirmar = messagebox.askyesno("Confirmação", "Deseja excluir este registro?")
+        if confirmar:
+            indice = tree.index(item)
+            registros.pop(indice)
+            tree.delete(item)
+
+    def gerar_excel():
+        if not registros:
+            messagebox.showerror("Erro", "Nenhum dado para preencher.")
+            return
+        try:
+            wb = load_workbook(ARQUIVO_MODELO)
+            ws = wb.active
+            bloco_index = 0
+            for i, row in enumerate(ws.iter_rows(min_row=1)):
+                if bloco_index >= len(registros):
+                    break
+                if row[0].value and str(row[0].value).strip().upper() == "NOME" and row[1].value in (None, ""):
+                    nome, processo, tipo, data, data_notificar, resp, pub, obs = registros[bloco_index]
+                    ws.cell(row=i+1, column=2).value = nome
+                    ws.cell(row=i+2, column=2).value = processo
+                    ws.cell(row=i+3, column=2).value = tipo
+                    ws.cell(row=i+1, column=4).value = resp
+                    ws.cell(row=i+2, column=4).value = pub
+                    ws.cell(row=i+3, column=4).value = data
+                    bloco_index += 1
+            salvar_em = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
+            if salvar_em:
+                wb.save(salvar_em)
+                registrar_prazos_em_json()
+                messagebox.showinfo("Sucesso", f"Arquivo salvo em: {salvar_em}")
+        except Exception as e:
+            messagebox.showerror("Erro ao preencher planilha", str(e))
+
+
+    # Frame para agrupar os botões em linha
+    frame_botoes = tk.Frame(nova_janela, bg="#0f172a")
+    frame_botoes.pack(pady=10)
+
+    btn_adicionar = tk.Button(frame_botoes, text="Adicionar", bg="#2563eb", fg="white", command=adicionar)
+    btn_adicionar.original_bg = "#2563eb"
+    configurar_estilo_botoes(btn_adicionar)
+    btn_adicionar.bind("<Enter>", efeito_hover)
+    btn_adicionar.bind("<Leave>", efeito_sair_hover)
+    btn_adicionar.pack(side="left", padx=5)
+
+    btn_editar = tk.Button(frame_botoes, text="Editar Registro", bg="#2563eb", fg="white", command=editar_registro)
+    btn_editar.original_bg = "#2563eb"
+
+    configurar_estilo_botoes(btn_editar)
+    btn_editar.bind("<Enter>", efeito_hover)
+    btn_editar.bind("<Leave>", efeito_sair_hover)
+    btn_editar.pack(side="left", padx=5)
+
+    btn_salvar = tk.Button(frame_botoes, text="Salvar Alterações", bg="#2563eb", fg="white", command=salvar_alteracoes)
+    btn_salvar.original_bg = "#2563eb"
+    configurar_estilo_botoes(btn_salvar)
+    btn_salvar.bind("<Enter>", efeito_hover)
+    btn_salvar.bind("<Leave>", efeito_sair_hover)
+    btn_salvar.pack(side="left", padx=5)
+
+    btn_excluir = tk.Button(frame_botoes, text="Excluir Registro", bg="#dc2626", fg="white", command=excluir_registro)
+    btn_excluir.original_bg = "#dc2626"
+    configurar_estilo_botoes(btn_excluir)
+    btn_excluir.bind("<Enter>", efeito_hover)
+    btn_excluir.bind("<Leave>", efeito_sair_hover)
+    btn_excluir.pack(side="left", padx=5)
+
+    btn_gerar_excel = tk.Button(nova_janela, text="Preencher Dados Cliente/Processo", bg="#22c55e", fg="white", command=gerar_excel)
+    btn_gerar_excel.original_bg = "#22c55e"
+    configurar_estilo_botoes(btn_gerar_excel)
+    btn_gerar_excel.bind("<Enter>", efeito_hover)
+    btn_gerar_excel.bind("<Leave>", efeito_sair_hover)
+    btn_gerar_excel.pack(pady=10)
+
+
+
+
 
 
 def recurso_path(rel_path):
@@ -215,116 +416,7 @@ def adicionar_feriado():
     except ValueError:
         messagebox.showerror("Erro", "Formato de data inválido. Use DD/MM.")
 
-def abrir_janela_preenchimento_multiplo():
-    nova_janela = tk.Toplevel(janela)
-    nova_janela.title("Múltiplos Preenchimentos")
-    nova_janela.geometry("520x720")
-    nova_janela.configure(bg="#0f172a")
 
-    def criar_label(texto):
-        return tk.Label(nova_janela, text=texto, bg="#0f172a", fg="white")
-
-    criar_label("Data do Prazo (DD/MM):").pack()
-    entry_data_prazo = tk.Entry(nova_janela)
-    entry_data_prazo.pack()
-
-    criar_label("Nome:").pack()
-    entry_nome = tk.Entry(nova_janela)
-    entry_nome.pack()
-
-    criar_label("Processo:").pack()
-    entry_processo = tk.Entry(nova_janela)
-    entry_processo.pack()
-
-    criar_label("Tipo de Prazo:").pack()
-    entry_tipo = tk.Entry(nova_janela)
-    entry_tipo.pack()
-
-    criar_label("Responsável:").pack()
-    entry_resp = tk.Entry(nova_janela)
-    entry_resp.pack()
-
-    criar_label("Data para notificar o Fatal (DD/MM):").pack()
-    entry_data_notificar = tk.Entry(nova_janela)
-    entry_data_notificar.pack()
-
-    criar_label("Publicação:").pack()
-    entry_pub = tk.Entry(nova_janela)
-    entry_pub.pack()
-
-    criar_label("Observações:").pack()
-    entry_obs = tk.Text(nova_janela, height=3, wrap="word")
-    entry_obs.pack(fill="x", padx=10, pady=5)
-
-    colunas = ("Nome", "Processo", "Tipo", "Data", "Resp", "Pub", "Obs")
-    tree = ttk.Treeview(nova_janela, columns=colunas, show="headings")
-    for col in colunas:
-        tree.heading(col, text=col)
-    tree.pack(pady=5, fill="both", expand=True)
-
-    def adicionar():
-        nome = entry_nome.get()
-        processo = entry_processo.get()
-        tipo = entry_tipo.get()
-        data = entry_data_prazo.get()
-        resp = entry_resp.get()
-        pub = entry_pub.get()
-        obs = entry_obs.get("1.0", tk.END).strip()
-        data_notificar = entry_data_notificar.get()
-        if all([nome, processo, tipo, data, data_notificar, resp, pub]):
-            registros.append((nome, processo, tipo, data, data_notificar, resp, pub, obs))
-            tree.insert("", "end", values=(nome, processo, tipo, data, resp, pub, obs[:30] + ("..." if len(obs) > 30 else "")))
-            entry_nome.delete(0, tk.END)
-            entry_processo.delete(0, tk.END)
-            entry_tipo.delete(0, tk.END)
-            entry_resp.delete(0, tk.END)
-            entry_pub.delete(0, tk.END)
-            entry_obs.delete("1.0", tk.END)
-
-    def gerar_excel():
-        if not registros:
-            messagebox.showerror("Erro", "Nenhum dado para preencher.")
-            return
-        try:
-            wb = load_workbook(ARQUIVO_MODELO)
-            ws = wb.active
-            bloco_index = 0
-            for i, row in enumerate(ws.iter_rows(min_row=1)):
-                if bloco_index >= len(registros):
-                    break
-                if row[0].value and str(row[0].value).strip().upper() == "NOME" and row[1].value in (None, ""):
-                    nome, processo, tipo, data, data_notificar, resp, pub, obs = registros[bloco_index]
-                    ws.cell(row=i+1, column=2).value = nome
-                    ws.cell(row=i+2, column=2).value = processo
-                    ws.cell(row=i+3, column=2).value = tipo
-                    ws.cell(row=i+1, column=4).value = resp
-                    ws.cell(row=i+2, column=4).value = pub
-                    ws.cell(row=i+3, column=4).value = data
-
-                    # Quebra observações em 3 partes para preencher F, G, H
-                    obs_linhas = obs.strip().splitlines()
-                    texto_total = " ".join(obs_linhas)
-                    partes = [texto_total[i:i+50] for i in range(0, len(texto_total), 50)]
-                    for j in range(3):
-                        if j < len(partes):
-                            ws.cell(row=i+1+j, column=6).value = partes[j]
-
-                    bloco_index += 1
-
-            salvar_em = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
-            if salvar_em:
-              wb.save(salvar_em)
-
-            # Salvar prazos no JSON
-            registrar_prazos_em_json()
-
-            messagebox.showinfo("Sucesso", f"Arquivo salvo em: {salvar_em}")
-
-        except Exception as e:
-            messagebox.showerror("Erro ao preencher planilha", str(e))
-
-    tk.Button(nova_janela, text="Adicionar", bg="#2563eb", fg="white", command=adicionar).pack(pady=5)
-    tk.Button(nova_janela, text="Preencher Dados Cliente/Processo", bg="#22c55e", fg="white", command=gerar_excel).pack(pady=10)
     criar_label("Aplicação desenvolvida por: Rodrigo Junqueira de Lima Siqueira").pack(side="bottom", pady=(10, 5))
 
 def recurso_path(rel_path):
@@ -339,8 +431,18 @@ IMAGEM_JURIDICA = os.path.join(os.path.dirname(__file__), "justica.png")
 
 # Interface principal com abas no topo
 janela = tk.Tk()
+# === Estilo Global dos Botões ===
+def configurar_estilo_botoes(widget):
+    widget.configure(font=("Segoe UI", 9, "bold"), padx=4, pady=2, relief="raised", bd=2)
+
+def efeito_hover(event):
+    event.widget.config(bg="#3b82f6")  # Azul um pouco mais claro no hover
+
+def efeito_sair_hover(event):
+    event.widget.config(bg=event.widget.original_bg)  # Voltar para a cor original
+
 janela.title("Sistema de Controle de Prazos")
-janela.geometry("850x650")
+janela.geometry("1150x720")
 janela.configure(bg="#0f172a")
 
 style = ttk.Style()
@@ -426,7 +528,42 @@ adicionar_feriado_btn.grid(row=0, column=4, padx=5)
 
 # === Aba Notificações ===
 aba_notificacoes = tk.Frame(abas, bg="#0f172a")
-abas.add(aba_notificacoes, text="  Notificações  ", image=icon_notification, compound="left")
+abas.add(aba_notificacoes, text="  Notificações do dia ", image=icon_notification, compound="left")
+# === Aba Notificações Futuras ===
+aba_notificacoes_futuras = tk.Frame(abas, bg="#0f172a")
+abas.add(aba_notificacoes_futuras, text="  Notificações Futuras  ", image=icon_notification, compound="left")
+
+tk.Label(aba_notificacoes_futuras, text="Notificações Agendadas", font=("Segoe UI", 14, "bold"),
+         bg="#0f172a", fg="white").pack(pady=(20, 10))
+
+colunas_futuras = ("Cliente", "Processo", "Tipo de Prazo", "Data Notificação Fatal", "Data", "Registro em")
+tree_futuras = ttk.Treeview(aba_notificacoes_futuras, columns=colunas_futuras, show="headings", height=20)
+
+for col in colunas_futuras:
+    tree_futuras.heading(col, text=col)
+    tree_futuras.column(col, width=130, anchor="center")
+
+tree_futuras.pack(fill="both", padx=10, pady=(0, 10), expand=True)
+
+def carregar_notificacoes_futuras():
+    tree_futuras.delete(*tree_futuras.get_children())
+    try:
+        prazos = carregar_prazos()
+        for prazo in prazos:
+            if not prazo.get("notificado"):
+                tree_futuras.insert("", "end", values=(
+                    prazo.get("cliente", ""),
+                    prazo.get("processo", ""),
+                    prazo.get("tipo_prazo", ""),
+                    prazo.get("data_para_notificar", ""),
+                    prazo.get("data_fatal", ""),
+                    prazo.get("registro_em", "")
+                ))
+    except Exception as e:
+        messagebox.showerror("Erro", f"Erro ao carregar notificações futuras:\n{e}")
+
+# Inicializa exibição
+carregar_notificacoes_futuras()
 
 tk.Label(aba_notificacoes, text="Histórico de Notificações", font=("Segoe UI", 14, "bold"),
          bg="#0f172a", fg="white").pack(pady=(20, 10))
@@ -622,15 +759,6 @@ tk.Label(aba_config, text="Desenvolvido por Rodrigo Junqueira - Versão 1.0",
 
 
 # Funções placeholder para evitar erro de execução
-
-def abrir_janela_preenchimento_multiplo():
-    print("Abrir janela de preenchimento múltiplo")
-
-def exibir_calculo():
-    print("Executar cálculo do prazo")
-
-def alternar_feriado():
-    print("Alternar visualização de feriado")
 
 # Rodapé
 tk.Label(janela, text="Aplicação desenvolvida por: Rodrigo Junqueira de Lima Siqueira", font=("Segoe UI", 8), bg="#0f172a", fg="#64748b").pack(side="bottom", pady=(10, 5))
