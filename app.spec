@@ -5,7 +5,7 @@ a = Analysis(
     ['app.py'],
     pathex=[],
     binaries=[],
-    datas=[('icon_inicio.png', '.'), ('icon_calc.png', '.'), ('icon_notification.png', '.'), ('icon_listagem.png', '.'), ('icon_config.png', '.'), ('justica.png', '.'), ('Planilha de prazos - atualizada.xlsx', '.')],
+    datas=[('justica.png', '.'), ('icon_inicio.png', '.'), ('icon_calc.png', '.'), ('icon_notification.png', '.'), ('icon_listagem.png', '.'), ('icon_config.png', '.'), ('Planilha de prazos - atualizada.xlsx', '.')],
     hiddenimports=[],
     hookspath=[],
     hooksconfig={},

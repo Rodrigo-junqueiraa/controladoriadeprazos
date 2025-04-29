@@ -18,5 +18,15 @@
         "lembrete": "FATAL",
         "notificado": false,
         "registro_em": "2025-04-29 08:45"
+    },
+    {
+        "cliente": "roberto",
+        "processo": "2124124124124",
+        "tipo_prazo": "RO",
+        "data_fatal": "28/04",
+        "data_para_notificar": "29/04",
+        "lembrete": "FATAL",
+        "notificado": true,
+        "registro_em": "2025-04-29 12:36"
     }
 ]

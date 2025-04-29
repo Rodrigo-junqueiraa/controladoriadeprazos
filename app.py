@@ -429,6 +429,99 @@ def recurso_path(rel_path):
 
 IMAGEM_JURIDICA = os.path.join(os.path.dirname(__file__), "justica.png")
 
+# Funcionalidade para o relátorio de prazos fatais em PDF
+
+from fpdf import FPDF
+from datetime import datetime
+from tkinter import simpledialog, messagebox, filedialog
+import os
+import traceback
+
+def gerar_relatorio_fatais_pdf():
+    try:
+        data_escolhida = simpledialog.askstring("Data", "Informe a data (DD/MM):")
+        if not data_escolhida:
+            return
+
+        try:
+            datetime.strptime(data_escolhida, "%d/%m")
+        except ValueError:
+            messagebox.showerror("Erro", "Data inválida. Use o formato DD/MM.")
+            return
+
+        prazos = carregar_prazos()
+        prazos_filtrados = [p for p in prazos if p.get("data_fatal") == data_escolhida]
+
+        if not prazos_filtrados:
+            messagebox.showinfo("Sem prazos", "Nenhum prazo fatal encontrado para essa data.")
+            return
+
+        pdf = FPDF()
+        pdf.add_page()
+        pdf.add_font("DejaVu", "", "DejaVuSans.ttf", uni=True)
+        pdf.add_font("DejaVu", "B", "DejaVuSans-Bold.ttf", uni=True)
+        pdf.add_font("DejaVu", "I", "DejaVuSans-Oblique.ttf", uni=True)
+
+        # Fundo escuro
+        pdf.set_fill_color(15, 23, 42)
+        pdf.rect(0, 0, 210, 297, 'F')
+
+        # Imagem centralizada
+        if os.path.exists("justica.png"):
+            pdf.image("justica.png", x=(210 - 30) / 2, y=10, w=30)
+
+        # Título
+        pdf.set_y(45)
+        pdf.set_text_color(255, 255, 255)
+        pdf.set_font("DejaVu", "B", 14)
+        pdf.cell(0, 10, "Sistema de Controle de Prazos Jurídicos", ln=True, align="C")
+
+        # Texto principal
+        pdf.set_font("DejaVu", "", 12)
+        pdf.ln(10)
+        pdf.cell(0, 10, f"Data do Relatório: {datetime.now().strftime('%d/%m/%Y')}", ln=True)
+        pdf.cell(0, 10, f"Prazos Fatais – {data_escolhida}", ln=True)
+        pdf.ln(5)
+
+        for p in prazos_filtrados:
+            cliente = p.get("cliente", "N/A")
+            processo = p.get("processo", "N/A")
+            tipo = p.get("tipo_prazo", "N/A")
+            linha = f"{cliente} – {processo} – {tipo}"
+            pdf.multi_cell(0, 10, linha)
+
+        # Rodapé
+        pdf.ln(10)
+        pdf.set_font("DejaVu", "I", 10)
+        pdf.set_text_color(200, 200, 200)
+        pdf.cell(0, 10, "Relatório gerado automaticamente pelo sistema.", ln=True, align="C")
+        pdf.cell(0, 10, "Desenvolvido por Rodrigo Junqueira de Lima Siqueira", ln=True, align="C")
+
+        # Perguntar onde salvar
+        nome_arquivo = filedialog.asksaveasfilename(
+            defaultextension=".pdf",
+            filetypes=[("PDF files", "*.pdf")],
+            initialfile=f"Relatorio_Fatais_{data_escolhida.replace('/', '-')}.pdf",
+            title="Salvar Relatório PDF"
+        )
+
+        if nome_arquivo:
+            pdf.output(nome_arquivo)
+            messagebox.showinfo("Sucesso", f"Relatório salvo como:\n{nome_arquivo}")
+        else:
+            messagebox.showinfo("Cancelado", "Salvamento do relatório foi cancelado.")
+
+    except Exception as e:
+        print("Erro ao gerar PDF:", traceback.format_exc())
+        messagebox.showerror("Erro", f"Erro ao gerar PDF:\n{e}")
+
+
+
+
+
+
+
+
 # Interface principal com abas no topo
 janela = tk.Tk()
 # === Estilo Global dos Botões ===
@@ -482,6 +575,11 @@ tk.Label(aba_principal, text="Sistema de Controle de Prazos", font=("Segoe UI", 
 
 # Botão conferir prazos fatais
 tk.Button(aba_principal, text="Conferir prazos fatais do dia", font=("Segoe UI", 11, "bold"), bg="#dc2626", fg="white", command=verificar_prazos_hoje).pack(pady=(10, 5), anchor="center")
+
+# Botão Gerar Relátorio de Prazos Fatais (PDF)
+tk.Button(aba_principal, text="Gerar Relatório de Prazos Fatais (PDF)", font=("Segoe UI", 11, "bold"), 
+          bg="#dc2626", fg="white", command=gerar_relatorio_fatais_pdf).pack(pady=(5, 30), anchor="center")
+
 
 # Botão preencher
 tk.Button(aba_principal, text="Preencher Cliente / Processo", font=("Segoe UI", 12, "bold"), bg="#22c55e", fg="white", command=abrir_janela_preenchimento_multiplo).pack(pady=(10, 30), anchor="center")
