@@ -1,0 +1,1 @@
+"""Módulo UI - Interface gráfica"""

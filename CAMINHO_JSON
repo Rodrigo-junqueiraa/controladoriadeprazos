@@ -1,32 +1,42 @@
 [
     {
-        "cliente": "John Wick",
-        "processo": "1234567-89.2025.5.03.0007",
-        "tipo_prazo": "Embargos de Declaração",
-        "data_fatal": "14/04",
-        "data_para_notificar": "22/04",
-        "lembrete": "FATAL",
-        "notificado": true,
-        "registro_em": "2025-04-22 12:11"
-    },
-    {
-        "cliente": "abcd",
-        "processo": "1234567-89.2025.5.03.0041",
-        "tipo_prazo": "eds",
-        "data_fatal": "29/04",
-        "data_para_notificar": "30/04",
+        "cliente": "Alvaro Antônio de Matos Fernandes",
+        "processo": "1100561-52.2023.4.06.3800",
+        "tipo_prazo": "Ver decisão/ED",
+        "data_fatal": "02/05",
+        "data_para_notificar": "05/02",
         "lembrete": "FATAL",
         "notificado": false,
-        "registro_em": "2025-04-29 08:45"
+        "registro_em": "2025-04-30 16:39"
     },
     {
-        "cliente": "roberto",
-        "processo": "2124124124124",
-        "tipo_prazo": "RO",
-        "data_fatal": "28/04",
-        "data_para_notificar": "29/04",
+        "cliente": "Ricardo Pereira Lima da Silva",
+        "processo": "0010393-96.2020.5.03.0026",
+        "tipo_prazo": "Impugnar memória de cálculo",
+        "data_fatal": "02/05",
+        "data_para_notificar": "05/02",
         "lembrete": "FATAL",
-        "notificado": true,
-        "registro_em": "2025-04-29 12:36"
+        "notificado": false,
+        "registro_em": "2025-04-30 16:39"
+    },
+    {
+        "cliente": "Andre Rocha de Almeida Costa",
+        "processo": "0010351-10.2021.5.03.0027",
+        "tipo_prazo": "Requerer o que for de direito",
+        "data_fatal": "02/05",
+        "data_para_notificar": "05/02",
+        "lembrete": "FATAL",
+        "notificado": false,
+        "registro_em": "2025-04-30 16:39"
+    },
+    {
+        "cliente": "Leandro",
+        "processo": "123456-78.2026.5.03.0000",
+        "tipo_prazo": "EDs",
+        "data_fatal": "20/03",
+        "data_para_notificar": "20/03",
+        "lembrete": "FATAL",
+        "notificado": false,
+        "registro_em": "2026-03-19 19:37"
     }
 ]

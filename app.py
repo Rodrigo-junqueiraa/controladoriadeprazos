@@ -1,3 +1,12 @@
+
+import unicodedata
+
+def limpar_texto(texto):
+    texto = texto.replace("–", "-")
+    texto = ''.join(c for c in texto if unicodedata.category(c)[0] != "C")
+    texto = ''.join(c if c.isprintable() else "?" for c in texto)
+    return texto.strip()
+
 import sys
 import os
 import sys
@@ -14,6 +23,23 @@ from datetime import datetime
 import sys
 import zipfile
 from datetime import datetime
+
+import json
+import os
+from tkinter import messagebox
+
+CAMINHO_JSON_ADV = "advogados.json"
+
+def carregar_advogados():
+    if os.path.exists(CAMINHO_JSON_ADV):
+        with open(CAMINHO_JSON_ADV, "r", encoding="utf-8") as f:
+            return json.load(f).get("advogados", [])
+    return []
+
+def salvar_advogados(lista):
+    with open(CAMINHO_JSON_ADV, "w", encoding="utf-8") as f:
+        json.dump({"advogados": lista}, f, indent=2, ensure_ascii=False)
+
 
 def abrir_janela_preenchimento_multiplo():
     nova_janela = tk.Toplevel(janela)
@@ -161,6 +187,7 @@ def abrir_janela_preenchimento_multiplo():
                     ws.cell(row=i+1, column=4).value = resp
                     ws.cell(row=i+2, column=4).value = pub
                     ws.cell(row=i+3, column=4).value = data
+                    ws.cell(row=i+1, column=6).value = obs  # <- OBS em coluna F apenas
                     bloco_index += 1
             salvar_em = filedialog.asksaveasfilename(defaultextension=".xlsx", filetypes=[("Excel", "*.xlsx")])
             if salvar_em:
@@ -288,7 +315,7 @@ def registrar_prazos_em_json():
             "data_fatal": data,
             "data_para_notificar": datetime.strptime(data_notificar.strip(), "%d/%m").strftime("%d/%m"),
             "lembrete": "FATAL",
-            "lembrete": "FATAL",
+
             "notificado": False,
             "registro_em": datetime.now().strftime("%Y-%m-%d %H:%M")
         }
@@ -450,7 +477,11 @@ def gerar_relatorio_fatais_pdf():
             return
 
         prazos = carregar_prazos()
-        prazos_filtrados = [p for p in prazos if p.get("data_fatal") == data_escolhida]
+        prazos_filtrados = [
+         p for p in prazos
+        if p.get("data_para_notificar") == data_escolhida and p.get("lembrete", "").upper() == "FATAL"
+]
+
 
         if not prazos_filtrados:
             messagebox.showinfo("Sem prazos", "Nenhum prazo fatal encontrado para essa data.")
@@ -477,18 +508,45 @@ def gerar_relatorio_fatais_pdf():
         pdf.cell(0, 10, "Sistema de Controle de Prazos Jurídicos", ln=True, align="C")
 
         # Texto principal
+        pdf.set_left_margin(10)
+        pdf.set_right_margin(10)
+        pdf.set_auto_page_break(auto=True, margin=15)
         pdf.set_font("DejaVu", "", 12)
         pdf.ln(10)
         pdf.cell(0, 10, f"Data do Relatório: {datetime.now().strftime('%d/%m/%Y')}", ln=True)
-        pdf.cell(0, 10, f"Prazos Fatais – {data_escolhida}", ln=True)
+        pdf.cell(0, 10, f"Prazos Fatais - {data_escolhida}", ln=True)
         pdf.ln(5)
 
+        import unicodedata
+
+        def limpar_texto(texto):
+            texto = texto.replace("–", "-")  # substitui travessão por hífen
+            texto = ''.join(c for c in texto if unicodedata.category(c)[0] != "C")  # remove caracteres de controle
+            texto = ''.join(c if c.isprintable() else "?" for c in texto)  # substitui os não imprimíveis
+            return texto.strip()
+
         for p in prazos_filtrados:
-            cliente = p.get("cliente", "N/A")
-            processo = p.get("processo", "N/A")
-            tipo = p.get("tipo_prazo", "N/A")
-            linha = f"{cliente} – {processo} – {tipo}"
-            pdf.multi_cell(0, 10, linha)
+            try:
+                cliente = p.get("cliente", "N/A")
+                processo = p.get("processo", "N/A")
+                tipo = p.get("tipo_prazo", "N/A")
+
+                linha = limpar_texto(f"{cliente} - {processo} - {tipo}")
+
+                if not linha:
+                    linha = "Dados indisponíveis"
+
+                pdf.set_font("DejaVu", "", 12)
+                pdf.multi_cell(180, 10, linha)
+                pdf.ln(2)
+
+            except Exception as e:
+                pdf.set_font("DejaVu", "", 12)
+                pdf.cell(0, 8, "[Erro ao exibir linha]", ln=True)
+                pdf.ln(3)
+                continue
+
+
 
         # Rodapé
         pdf.ln(10)
@@ -520,8 +578,6 @@ def gerar_relatorio_fatais_pdf():
 
 
 
-
-
 # Interface principal com abas no topo
 janela = tk.Tk()
 # === Estilo Global dos Botões ===
@@ -535,7 +591,7 @@ def efeito_sair_hover(event):
     event.widget.config(bg=event.widget.original_bg)  # Voltar para a cor original
 
 janela.title("Sistema de Controle de Prazos")
-janela.geometry("1150x720")
+janela.geometry("1300x720")
 janela.configure(bg="#0f172a")
 
 style = ttk.Style()
@@ -627,6 +683,7 @@ adicionar_feriado_btn.grid(row=0, column=4, padx=5)
 # === Aba Notificações ===
 aba_notificacoes = tk.Frame(abas, bg="#0f172a")
 abas.add(aba_notificacoes, text="  Notificações do dia ", image=icon_notification, compound="left")
+
 # === Aba Notificações Futuras ===
 aba_notificacoes_futuras = tk.Frame(abas, bg="#0f172a")
 abas.add(aba_notificacoes_futuras, text="  Notificações Futuras  ", image=icon_notification, compound="left")
@@ -642,6 +699,41 @@ for col in colunas_futuras:
     tree_futuras.column(col, width=130, anchor="center")
 
 tree_futuras.pack(fill="both", padx=10, pady=(0, 10), expand=True)
+
+def excluir_notificacao_futura():
+    item = tree_futuras.selection()
+    if not item:
+        messagebox.showwarning("Aviso", "Selecione uma notificação para excluir.")
+        return
+
+    confirmar = messagebox.askyesno("Confirmação", "Deseja realmente excluir esta notificação?")
+    if not confirmar:
+        return
+
+    index = tree_futuras.index(item[0])
+    tree_futuras.delete(item[0])
+
+    try:
+        prazos = carregar_prazos()
+        # Ignora os prazos que já foram notificados
+        prazos_futuros = [p for p in prazos if not p.get("notificado")]
+
+        if 0 <= index < len(prazos_futuros):
+            prazo_removido = prazos_futuros[index]
+
+            # Remove do JSON original
+            prazos.remove(prazo_removido)
+            salvar_prazos(prazos)
+            messagebox.showinfo("Sucesso", "Notificação excluída com sucesso.")
+        else:
+            messagebox.showwarning("Erro", "Índice inválido para exclusão.")
+    except Exception as e:
+        messagebox.showerror("Erro", f"Erro ao excluir notificação:\n{e}")
+
+btn_excluir_nf = tk.Button(aba_notificacoes_futuras, text="Excluir Notificação Selecionada", bg="#dc2626", fg="white",
+                           font=("Segoe UI", 10, "bold"), command=excluir_notificacao_futura)
+btn_excluir_nf.pack(pady=(0, 10))
+
 
 def carregar_notificacoes_futuras():
     tree_futuras.delete(*tree_futuras.get_children())
@@ -767,6 +859,143 @@ def buscar_prazos_por_data():
 
 tk.Button(aba_listagem, text="Buscar", font=("Segoe UI", 10, "bold"),
           bg="#2563eb", fg="white", command=buscar_prazos_por_data).pack(pady=(0, 10))
+
+# === Aba Buscar via DJEN ===
+from tkinter import simpledialog
+from docx import Document
+from datetime import datetime
+
+aba_djen = tk.Frame(abas, bg="#0f172a")
+abas.add(aba_djen, text="  Busca via DJEN  ", image=icon_listagem, compound="left")
+
+# Frame principal da nova aba
+frame_adv = tk.Frame(aba_djen, bg="#0f172a")
+frame_adv.pack(pady=10)
+
+# Interface de Cadastro
+tk.Label(frame_adv, text="Nome do Advogado:", fg="white", bg="#0f172a").pack()
+entrada_nome_adv = tk.Entry(frame_adv, width=50)
+entrada_nome_adv.pack(pady=5)
+
+lista_advogados = tk.Listbox(frame_adv, width=50, height=8)
+lista_advogados.pack(pady=5)
+
+# Funções
+def carregar_advogados():
+    if os.path.exists("advogados.json"):
+        with open("advogados.json", "r", encoding="utf-8") as f:
+            return json.load(f).get("advogados", [])
+    return []
+
+def salvar_advogados(lista):
+    with open("advogados.json", "w", encoding="utf-8") as f:
+        json.dump({"advogados": lista}, f, indent=2, ensure_ascii=False)
+
+def atualizar_lista_advogados():
+    lista_advogados.delete(0, tk.END)
+    for nome in carregar_advogados():
+        lista_advogados.insert(tk.END, nome)
+
+def adicionar_advogado():
+    nome = entrada_nome_adv.get().strip()
+    if not nome:
+        messagebox.showwarning("Aviso", "Digite o nome do advogado.")
+        return
+    lista_advogados.insert(tk.END, nome)
+    resposta = messagebox.askyesno("Memorizar?", f"Deseja que o sistema memorize o nome '{nome}' para futuras buscas?")
+    if resposta:
+        atuais = carregar_advogados()
+        if nome not in atuais:
+            atuais.append(nome)
+            salvar_advogados(atuais)
+    entrada_nome_adv.delete(0, tk.END)
+
+def excluir_advogado():
+    selecionado = lista_advogados.curselection()
+    if not selecionado:
+        messagebox.showwarning("Aviso", "Selecione um nome para excluir.")
+        return
+    index = selecionado[0]
+    nome = lista_advogados.get(index)
+    lista_advogados.delete(index)
+    atuais = carregar_advogados()
+    if nome in atuais:
+        atuais.remove(nome)
+        salvar_advogados(atuais)
+
+def buscar_publicacoes_simuladas():
+    advogados = carregar_advogados()
+    if not advogados:
+        messagebox.showwarning("Aviso", "Nenhum advogado cadastrado para busca.")
+        return
+
+    # Simulação de retorno de publicações
+    publicacoes = [
+        {
+            "data_publicacao": "29/04/2025",
+            "data_disponibilizacao": "28/04/2025",
+            "processo": "0010393-96.2020.5.03.0026",
+            "variacao": "RODRIGO JUNQUEIRA DE LIMA SIQUEIRA",
+            "tribunal": "TRT3 - MINAS GERAIS",
+            "orgao": "1ª Vara do Trabalho de Betim",
+            "conteudo": "Publicação simulada de despacho relevante com prazo.",
+            "link": "https://exemplo.com/publicacao1"
+        },
+        {
+            "data_publicacao": "29/04/2025",
+            "data_disponibilizacao": "28/04/2025",
+            "processo": "0001234-56.2024.5.10.0001",
+            "variacao": "DENISE MARCONDES",
+            "tribunal": "TRT10 - DISTRITO FEDERAL",
+            "orgao": "2ª Vara do Trabalho de Brasília",
+            "conteudo": "Publicação importante do TRT10 para manifestação.",
+            "link": "https://exemplo.com/publicacao2"
+        }
+    ]
+
+    # Separar por tipo de jornal
+    mg = []
+    outros = []
+    for pub in publicacoes:
+        if "MG" in pub["tribunal"] or "Minas Gerais" in pub["tribunal"]:
+            mg.append(pub)
+        else:
+            outros.append(pub)
+
+    def gerar_docx(publicacoes, nome_arquivo):
+        doc = Document()
+        for pub in publicacoes:
+            doc.add_paragraph(f"DATA DA PUBLICAÇÃO: {pub['data_publicacao']}    DATA DA DISPONIBILIZAÇÃO: {pub['data_disponibilizacao']}")
+            doc.add_paragraph(f"PROCESSO: {pub['processo']}")
+            doc.add_paragraph(f"VARIAÇÃO ENCONTRADA: {pub['variacao']}")
+            doc.add_paragraph(f"TRIBUNAL: {pub['tribunal']}")
+            doc.add_paragraph(f"ÓRGÃO: {pub['orgao']}")
+            doc.add_paragraph("\nConteúdo da Publicação:\n" + pub['conteudo'])
+            doc.add_paragraph("\nLink do Inteiro Teor:\n" + pub['link'])
+            doc.add_paragraph("-" * 60)
+        doc.save(nome_arquivo)
+
+    agora = datetime.now().strftime("%d-%m-%Y - %Hh%M")
+    nome_mg = f"JORNAL MINAS GERAIS - {agora}.docx"
+    nome_nacional = f"JORNAL TODOS OS ESTADOS - {agora}.docx"
+
+    gerar_docx(mg, nome_mg)
+    gerar_docx(outros, nome_nacional)
+
+    messagebox.showinfo("Sucesso", f"Arquivos gerados:\n{nome_mg}\n{nome_nacional}")
+
+# Botões
+btn_add = tk.Button(frame_adv, text="Adicionar Advogado", command=adicionar_advogado)
+btn_add.pack(pady=3)
+
+btn_del = tk.Button(frame_adv, text="Excluir Advogado Selecionado", command=excluir_advogado)
+btn_del.pack(pady=3)
+
+btn_buscar = tk.Button(frame_adv, text="Buscar Publicações do Dia", bg="#2563eb", fg="white", font=("Segoe UI", 10, "bold"), command=buscar_publicacoes_simuladas)
+btn_buscar.pack(pady=10)
+
+# Atualizar lista ao abrir a aba
+atualizar_lista_advogados()
 
 
 # === Aba Configurações ===
