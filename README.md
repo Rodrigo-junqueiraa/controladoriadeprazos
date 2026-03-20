@@ -2,6 +2,12 @@
 
 Aplicação com interface gráfica voltada para advogados(as) e profissionais do Direito, que automatiza o **preenchimento da data de prazo** em planilhas e realiza o cálculo do termo final com base em dias úteis, conforme a CLT e o CPC.
 
+Versão de testes
+
+<img width="1061" height="851" alt="image" src="https://github.com/user-attachments/assets/a5435b52-0ef0-43a7-88a6-ea6cf243e9de" />
+
+
+
 ## ✨ Funcionalidades
 
 - 🗓 Preenchimento da data de prazo em planilha Excel
